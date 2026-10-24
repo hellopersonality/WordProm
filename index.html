@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Twistword</title>
+<meta name="description" content="Trace words across a 3x3 letter cube, twist rows and columns, and clear every letter.">
+<meta name="theme-color" content="#262626">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Twistword">
+<meta property="og:title" content="Twistword">
+<meta property="og:description" content="Trace words across a 3x3 letter cube, twist rows and columns, and clear every letter.">
+<meta property="og:image" content="icons/icon-512.png">
+<link rel="icon" href="icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="bg" aria-hidden="true"></div>
+<div class="app" id="app">
+  <header class="mod bar" aria-label="Level status">
+    <div class="pill lvl jelly" id="lvlPill" style="--d:0" title="Level"><b id="lvl">1</b></div>
+    <button class="pill words jelly" id="wordsPill" style="--d:1" title="Words made. Tap to see them." aria-label="Words made">
+      <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 4.5h10M3 8h8M3 11.5h6"/></svg><b id="wordsVal">0</b></button>
+    <div class="pill dial jelly" id="goalClear" style="--d:2" title="Letters left">
+      <svg viewBox="0 0 100 100" aria-hidden="true"><circle class="track" cx="50" cy="50" r="42"/><circle class="fill" id="ring" cx="50" cy="50" r="42" stroke-dasharray="263.9" stroke-dashoffset="263.9"/></svg>
+      <b id="lettersVal">54</b></div>
+    <div class="pill coins jelly" id="coinTile" style="--d:3" title="Coins"><span class="coin" aria-hidden="true"></span><b id="coins">0</b></div>
+    <button class="pill menu" id="menuBtn" title="Menu" aria-label="Menu">
+      <svg viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M2.5 4h13M2.5 9h13M2.5 14h13"/></svg></button>
+  </header>
+
+  <div class="stage-wrap" id="stageWrap">
+    <div class="stage" id="stage">
+      <div class="cube" id="cube"></div>
+      <svg class="trail" id="trail" aria-hidden="true"></svg>
+      <div class="sheet" id="sheet" hidden>
+        <div class="card">
+          <div class="ttl"><h2 id="sheetTitle">Level cleared</h2></div>
+          <dl class="stats" id="sheetStats"></dl>
+          <button class="btn primary" id="nextBtn">Next level</button>
+        </div>
+      </div>
+    </div>
+    <div class="preview" id="preview" aria-live="polite"></div>
+    <div class="notice" id="notice" role="status" hidden><span class="msg"></span></div>
+    <div class="mod found-panel" id="foundPanel" hidden><div class="found" id="found"></div></div>
+  </div>
+
+  <section class="mod dock" aria-label="Tools and letters">
+    <button class="tool collapse jelly" id="collapseBtn" style="--d:4" title="Collapse: pulls stranded letters together on each face" aria-label="Collapse">
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l5 5M9 5v4H5M20 4l-5 5M15 5v4h4M4 20l5-5M9 19v-4H5M20 20l-5-5M15 19v-4h4"/></svg>
+      <span class="cost" id="collapseSub">free</span></button>
+    <div class="tray-t" id="tray" role="group" aria-label="Free letters" title="Free letters: drag one onto an empty square"></div>
+    <button class="tool renew jelly" id="trayReset" style="--d:5" title="New letters: swaps the tray for a fresh set, wildcard included" aria-label="New letters">
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4"/></svg>
+      <span class="cost" id="trayResetSub">50</span></button>
+    <div class="pad" id="pad" role="group" aria-label="Turn the cube: tap a side or drag" title="Turn the cube: tap a side of the pad, or drag it">
+      <svg viewBox="0 0 52 52" aria-hidden="true"><path class="chev" data-d="up" d="M21.5 11.5 26 7l4.5 4.5"/><path class="chev" data-d="down" d="M21.5 40.5 26 45l4.5-4.5"/><path class="chev" data-d="left" d="M11.5 21.5 7 26l4.5 4.5"/><path class="chev" data-d="right" d="M40.5 21.5 45 26l-4.5 4.5"/></svg>
+      <span class="knob" id="knob"></span>
+    </div>
+  </section>
+</div>
+
+<div class="screen" id="title">
+  <div class="bg" aria-hidden="true"></div>
+  <div class="title-col">
+    <div class="logo" aria-label="Twistword">
+      <div class="row"><span style="--i:0;background:var(--red)">T</span><span style="--i:1;background:var(--yellow)">W</span><span style="--i:2;background:var(--sky)">I</span><span style="--i:3;background:var(--orange)">S</span><span style="--i:4;background:var(--paper)">T</span></div>
+      <div class="row"><span style="--i:5;background:var(--cobalt);color:var(--paper)">W</span><span style="--i:6;background:var(--red)">O</span><span style="--i:7;background:var(--yellow)">R</span><span style="--i:8;background:var(--sky)">D</span></div>
+    </div>
+    <div class="menu">
+      <button class="mbtn y" id="tContinue" style="--i:0">Continue <small id="tContinueSub"></small></button>
+      <button class="mbtn p" id="tNew" style="--i:1">New game <small id="tNewSub"></small></button>
+      <button class="mbtn r" id="tEndless" style="--i:2">Endless <small id="tEndlessSub">letters never run out</small></button>
+      <button class="mbtn s" id="tHow" style="--i:3">How to play</button>
+      <button class="mbtn m" id="tSettings" style="--i:4">Settings</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay pause" id="pause" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-label="Paused">
+    <button class="mbtn y" id="pResume" style="--i:0">Resume</button>
+    <button class="mbtn s" id="pHow" style="--i:1">How to play</button>
+    <button class="mbtn m" id="pSettings" style="--i:2">Settings</button>
+    <button class="mbtn r" id="pNewRun" style="--i:3">New endless run <small id="pNewRunSub"></small></button>
+    <button class="mbtn p" id="pMenu" style="--i:4">Main menu</button>
+  </div>
+</div>
+
+<div class="overlay" id="info" hidden>
+  <div class="panel" role="dialog" aria-modal="true" aria-label="How to play and settings">
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tabPlay" aria-selected="true">How to play</button>
+      <button role="tab" id="tabTune" aria-selected="false">Settings</button>
+      <button class="x" id="infoClose" aria-label="Close">&times;</button>
+    </div>
+    <ul class="rules" id="panePlay">
+      <li><b>Trace</b>Drag across touching letters. Diagonals count. <span id="minLenTxt">2</span>+ letters.</li>
+      <li><b>Wrap edges</b>Words can cross onto the next face. Each extra face pays a bonus.</li>
+      <li><b>Clear the cube</b>Empty every letter to finish the level and move on.</li>
+      <li><b>Always clearable</b>Every cube starts out fully clearable. Twists, collapse and tray letters help when you get stuck.</li>
+      <li><b>Twist</b>Tap the arrows around the cube to turn a row or column. Free, once twists unlock.</li>
+      <li><b>Turn</b>Drag the empty space around the cube, or tap and drag the turn pad, to see other faces.</li>
+      <li><b>Free letters</b>Drag a tray letter onto an empty square. A <b style="display:inline;font-size:inherit">?</b> fits any word. New letters buys a fresh set.</li>
+      <li><b>Collapse</b>Slides each face's letters together so stranded ones touch again.</li>
+      <li><b>Sweep</b>When nothing is left to spell, clear the last few letters for coins.</li>
+      <li><b>No help</b>Clear the cube without sweeping for an extra bonus.</li>
+      <li><b>Endless</b>Every word you make is replaced by new letters, so the cube never empties. Twists are open from the start, and tray letters can be dropped on any square to swap it. Play as long as you like.</li>
+    </ul>
+    <div class="tune" id="tune" hidden></div>
+  </div>
+</div>
+<div class="fx" id="fx" aria-hidden="true"></div>
+<div class="toast" id="toast" hidden></div>
+<script src="data/words.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
