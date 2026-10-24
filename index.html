@@ -3,12 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Twistword</title>
+<title>WordProm</title>
 <meta name="description" content="Trace words across a 3x3 letter cube, twist rows and columns, and clear every letter.">
 <meta name="theme-color" content="#262626">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="WordProm">
+<meta property="og:title" content="WordProm">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%23262626'/><rect x='8' y='8' width='22' height='22' rx='6' fill='%23FF4A1C'/><rect x='34' y='8' width='22' height='22' rx='6' fill='%23FFD60A'/><rect x='8' y='34' width='22' height='22' rx='6' fill='%235CB8FF'/><rect x='34' y='34' width='22' height='22' rx='6' fill='%23FF9A1F'/></svg>">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="manifest" href="manifest.webmanifest">
@@ -238,6 +240,12 @@ html.endless #goalClear,html.endless #collapseBtn{display:none}
 /* a small thump of the stage when a word lands, bigger for longer words */
 .stage.thump{animation:thump .32s cubic-bezier(.2,1.8,.4,1)}
 @keyframes thump{30%{translate:0 calc(var(--k,1) * 2px);scale:calc(1 - var(--k,1) * .006)}}
+/* PROM arrives upside down (a mirrored "DROW", near enough) and flips over into place */
+.logo .row.flip{perspective:420px}
+.logo .row.flip span{animation:flipin 1.25s cubic-bezier(.3,1.3,.5,1) both,wave 2.6s cubic-bezier(.37,0,.63,1) infinite;
+  animation-delay:calc((var(--i) - 4) * 90ms + .35s),calc(var(--i) * -.2s)}
+@keyframes flipin{0%{transform:rotateX(180deg) scale(.3);opacity:0}22%{transform:rotateX(180deg) scale(1);opacity:1}
+  48%{transform:rotateX(180deg)}100%{transform:rotateX(0)}}
 html.calm .tile .ch,html.calm .tray-t .tl,html.calm .logo span{animation:none!important}
 .jelly{transform-origin:50% 60%;animation:sway 5s ease-in-out infinite;animation-delay:calc(var(--d,0) * -1.3s);will-change:transform}
 @keyframes sway{0%,100%{transform:rotate(-.6deg) translateY(0)}50%{transform:rotate(.6deg) translateY(-1px)}}
@@ -307,9 +315,9 @@ html.calm .bg{animation-duration:10s!important}
 <div class="screen" id="title">
   <div class="bg" aria-hidden="true"></div>
   <div class="title-col">
-    <div class="logo" aria-label="Twistword">
-      <div class="row"><span style="--i:0;background:var(--red)">T</span><span style="--i:1;background:var(--yellow)">W</span><span style="--i:2;background:var(--sky)">I</span><span style="--i:3;background:var(--orange)">S</span><span style="--i:4;background:var(--paper)">T</span></div>
-      <div class="row"><span style="--i:5;background:var(--cobalt);color:var(--paper)">W</span><span style="--i:6;background:var(--red)">O</span><span style="--i:7;background:var(--yellow)">R</span><span style="--i:8;background:var(--sky)">D</span></div>
+    <div class="logo" role="img" aria-label="WordProm">
+      <div class="row"><span style="--i:0;background:var(--red)">W</span><span style="--i:1;background:var(--yellow)">O</span><span style="--i:2;background:var(--sky)">R</span><span style="--i:3;background:var(--orange)">D</span></div>
+      <div class="row flip"><span style="--i:4;background:var(--cobalt);color:var(--paper)">P</span><span style="--i:5;background:var(--paper)">R</span><span style="--i:6;background:var(--red)">O</span><span style="--i:7;background:var(--yellow)">M</span></div>
     </div>
     <div class="menu">
       <button class="mbtn y" id="tContinue" style="--i:0">Continue <small id="tContinueSub"></small></button>
