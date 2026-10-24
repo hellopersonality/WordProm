@@ -100,12 +100,6 @@ html.endless #goalClear,html.endless #collapseBtn{display:none}
 .tile.wild{background:var(--plastic);color:var(--yellow);box-shadow:inset 0 0 0 calc(var(--s) * .06) var(--yellow)}
 .sticker.drop-ok .tile{box-shadow:inset 0 0 0 calc(var(--s) * .05) var(--yellow)}
 .sticker.drop-hover .tile{background:var(--yellow)}
-.arrow{position:absolute;left:calc(var(--s) * -.3);top:calc(var(--s) * -.3);width:calc(var(--s) * .6);height:calc(var(--s) * .6);padding:0;border:0;background:transparent;color:#6E6E6E;cursor:pointer;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:50%;transition:color .15s,opacity .2s}
-.arrow svg{width:100%;height:100%;display:block;animation:float 1.6s ease-in-out infinite}
-.arrow:hover,.arrow:focus-visible{color:var(--yellow)}
-@media (pointer:coarse){ .arrow{left:calc(var(--s) * -.42);top:calc(var(--s) * -.42);width:calc(var(--s) * .84);height:calc(var(--s) * .84);padding:calc(var(--s) * .12)} }
-.cube.moving .arrow{opacity:.2;pointer-events:none}
-@keyframes float{50%{transform:translateX(12%)}}
 .trail{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
 .trail line{stroke-linecap:round}
 
@@ -208,7 +202,7 @@ html.endless #goalClear,html.endless #collapseBtn{display:none}
 
 /* ---------- juice ---------- */
 /* Idle motion runs on the individual translate/rotate/scale properties, so it layers on top of the
-   transforms the game already uses (letter spin after a twist, selection, pop, born). */
+   transforms the game already uses (letter spin after a turn, selection, pop, born). */
 /* cube letters ride a slow sine wave that rolls diagonally across the cube */
 .tile .ch{animation:bob 2.8s cubic-bezier(.37,0,.63,1) infinite;animation-delay:var(--ph,0s);will-change:translate}
 @keyframes bob{0%,100%{translate:0 -.045em;rotate:-1.6deg}50%{translate:0 .045em;rotate:1.6deg}}
@@ -350,15 +344,14 @@ html.calm .bg{animation-duration:10s!important}
       <li><b>Trace</b>Drag across touching letters. Diagonals count. <span id="minLenTxt">2</span>+ letters.</li>
       <li><b>Wrap edges</b>Words can cross onto the next face. Each extra face pays a bonus.</li>
       <li><b>Clear the cube</b>Empty every letter to finish the level and move on.</li>
-      <li><b>Always clearable</b>Every cube starts out fully clearable. Twists, collapse and tray letters help when you get stuck.</li>
-      <li><b>Twist</b>Tap the arrows around the cube to turn a row or column. Free, once twists unlock.</li>
+      <li><b>Always clearable</b>Every cube starts out fully clearable. Collapse and tray letters help when you get stuck.</li>
       <li><b>Turn</b>Drag the empty space around the cube, or tap and drag the turn pad, to see other faces.</li>
       <li><b>Free letters</b>Drag a tray letter onto an empty square. A <b style="display:inline;font-size:inherit">?</b> fits any word. New letters buys a fresh set.</li>
       <li><b>Undo</b>Takes back the last word you made or the last tray letter you placed, coins and all. Collapse, sweep, reshuffle and new letters can't be undone.</li>
       <li><b>Collapse</b>Slides each face's letters together so stranded ones touch again.</li>
       <li><b>Sweep</b>When nothing is left to spell, clear the last few letters for coins.</li>
       <li><b>No help</b>Clear the cube without sweeping for an extra bonus.</li>
-      <li><b>Endless</b>Every word you make is replaced by new letters, so the cube never empties. Twists are open from the start, and tray letters can be dropped on any square to swap it. Play as long as you like.</li>
+      <li><b>Endless</b>Every word you make is replaced by new letters, so the cube never empties. Tray letters can be dropped on any square to swap it. Play as long as you like.</li>
     </ul>
     <div class="tune" id="tune" hidden></div>
   </div>
@@ -381,11 +374,6 @@ function setCalm(on){reduce=on;DUR=on?200:320;TURN_DUR=on?240:460;document.docum
 const AXES={'0,0,1':[[1,0,0],[0,1,0]],'0,0,-1':[[-1,0,0],[0,1,0]],'1,0,0':[[0,0,-1],[0,1,0]],'-1,0,0':[[0,0,1],[0,1,0]],'0,-1,0':[[1,0,0],[0,0,1]],'0,1,0':[[1,0,0],[0,0,-1]]};
 const FACE_NAME={'0,0,1':'front','0,-1,0':'top','1,0,0':'right','-1,0,0':'left','0,1,0':'bottom','0,0,-1':'back'};
 const VISIBLE=['0,0,1','0,-1,0','1,0,0'];
-/* twist arrows sit just past the outer edges of the three visible faces */
-const ARROW_EDGES=[[[0,0,1],[-1,0,0]],[[0,0,1],[0,1,0]],[[1,0,0],[0,0,-1]],[[1,0,0],[0,1,0]],[[0,-1,0],[0,0,-1]],[[0,-1,0],[-1,0,0]]];
-const FACE_ROT={'0,0,1':'','1,0,0':'rotateY(90deg)','0,-1,0':'rotateX(90deg)'};
-const FACE_AXES={'0,0,1':[[1,0,0],[0,1,0]],'1,0,0':[[0,0,-1],[0,1,0]],'0,-1,0':[[1,0,0],[0,0,1]]};
-const ARROW_SVG='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h12M12 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 const HUE_OF={'0,0,1':'w','0,0,-1':'y','0,-1,0':'r','0,1,0':'o','1,0,0':'b','-1,0,0':'g'};
 const FT={'0,0,1':'translateZ(var(--h))','0,0,-1':'rotateY(180deg) translateZ(var(--h))','1,0,0':'rotateY(90deg) translateZ(var(--h))','-1,0,0':'rotateY(-90deg) translateZ(var(--h))','0,-1,0':'rotateX(90deg) translateZ(var(--h))','0,1,0':'rotateX(-90deg) translateZ(var(--h))'};
 const BAG='eeeeeeeeeeeaaaaaaaaaiiiiiiiooooooonnnnnnrrrrrrttttttsssssslllldddduuugggbbccmmppffhhwwyykv';
@@ -398,7 +386,6 @@ const CFG_META=[
   ['levelBonus','Level bonus',0,500],
   ['clearBonus','Cube clear bonus',0,1000],
   ['cleanBonus','Extra for a clear with no sweeps',0,1000],
-  ['twistUnlock','Twists unlock at level',1,20],
   ['traySize','Free tray letters per level',0,10],
   ['trayResetCost','Cost to get new tray letters',0,500],
   ['wildsPerSet','Wildcards in each tray set',0,5],
@@ -409,7 +396,7 @@ const CFG_META=[
   ['startCoins','Starting coins',0,5000],
   ['undoCost','Undo cost',0,500]
 ];
-const DEFAULT_CFG={minLen:2,coinsPerLetter:2,longBonus:5,crossBonus:4,levelBonus:25,clearBonus:100,cleanBonus:100,twistUnlock:3,traySize:5,trayResetCost:50,freeCollapses:1,collapseCost:60,wildsPerSet:1,sweepMax:8,sweepCost:15,startCoins:100,undoCost:0};
+const DEFAULT_CFG={minLen:2,coinsPerLetter:2,longBonus:5,crossBonus:4,levelBonus:25,clearBonus:100,cleanBonus:100,traySize:5,trayResetCost:50,freeCollapses:1,collapseCost:60,wildsPerSet:1,sweepMax:8,sweepCost:15,startCoins:100,undoCost:0};
 
 /* ---------- dictionary ---------- */
 const DICT=new Set(), PREF=new Set();
@@ -456,7 +443,7 @@ let G=null;
 let busy=false, path=[], gesture=null, S=80;
 const POS=[];for(let x=-1;x<=1;x++)for(let y=-1;y<=1;y++)for(let z=-1;z<=1;z++)if(x||y||z)POS.push([x,y,z]);
 
-/* Saves the exact cube (letters, positions after twists, hidden words, tray, progress) so
+/* Saves the exact cube (letters, positions after turns, hidden words, tray, progress) so
    Continue resumes where the player left off. Browser storage can be missing; the game still runs. */
 const SAVE_KEY='twistword-v2', ENDLESS_KEY='twistword-endless';
 function load(k){try{return JSON.parse(localStorage.getItem(k||SAVE_KEY)||'null')}catch(e){return null}}
@@ -477,7 +464,6 @@ function restore(st){
   if(G.done){newLevel(G.level+1,G.coins);return true}
   return true;
 }
-const twistsOn=()=>isEndless()||G.level>=cfg.twistUnlock;
 
 function randomPath(cells,L){
   const free=cells.filter(c=>!c.ch);
@@ -529,7 +515,7 @@ function newLevel(level,coins,mode){
     if(!words){words=[];cells.forEach(c=>{if(!c.ch)c.ch=pick(BAG)})}
     words.forEach(w=>usedW.add(w.word));solution.push(...words);
   }
-  G={mode,level,coins,stickers:st,found:[],twistsUsed:0,lettersAdded:0,done:false,earned:0,spent:0,note:null,tray:makeTray(),solution,_deal:true,undo:[]};
+  G={mode,level,coins,stickers:st,found:[],lettersAdded:0,done:false,earned:0,spent:0,note:null,tray:makeTray(),solution,_deal:true,undo:[]};
   path=[];
   $('sheet').hidden=true;
 }
@@ -573,23 +559,6 @@ function render(fresh){
       c.appendChild(f);
     }
     frag.appendChild(c);
-  }
-  if(twistsOn()&&!G.done){
-    const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
-    for(const [n,d] of ARROW_EDGES){
-      const nk=key(n),[lx,ly]=FACE_AXES[nk],ang=Math.atan2(dot(d,ly),dot(d,lx))*180/Math.PI;
-      const a=cross(n,d),k=axisOf(a),s=a[k];
-      const ei=axisOf(d);
-      for(const p of POS){
-        if(p[axisOf(n)]!==n[axisOf(n)]||p[ei]!==d[ei]) continue;
-        const c=[0,1,2].map(i=>(p[i]+n[i]*.5+d[i]*.95)*S);
-        const b=document.createElement('button');b.className='arrow';b.innerHTML=ARROW_SVG;
-        b.dataset.k=k;b.dataset.s=s;b.dataset.l=p[k];
-        b.setAttribute('aria-label',`Twist ${k===1?'row':'column'} toward the ${FACE_NAME[key(d.map(v=>v))]||'edge'}`);
-        b.style.transform=`translate3d(${c[0]}px,${c[1]}px,${c[2]}px) ${FACE_ROT[nk]} rotate(${ang}deg)`;
-        frag.appendChild(b);
-      }
-    }
   }
   cubeEl.replaceChildren(frag);
   G.stickers.forEach(s=>{delete s.spin;delete s.slide;delete s.born});
@@ -707,7 +676,6 @@ function status(){
   }
   const lone=stranded();
   if(lone>=3){setNotice(`${lone} stranded letters`,'warn',canCollapse()?[['Collapse',collapse,true]]:[]);return}
-  if(twistsOn()&&G.level===cfg.twistUnlock&&!G.twistsUsed){setNotice('Twists unlocked · tap the arrows','good');return}
   clearNotice();
 }
 
@@ -749,11 +717,6 @@ function turnCube(k,s,fromDeg){
   path=[];
   animate(()=>true,k,s,TURN_DUR,null,fromDeg);
 }
-function twist(k,s,layer){
-  if(busy||G.done||!twistsOn()) return;
-  path=[];G.twistsUsed++;
-  animate(p=>p[k]===layer,k,s,DUR,()=>{status();save()});
-}
 function dirFor(n,dx,dy){
   let best=null,bd=-Infinity;
   for(let i=0;i<3;i++){if(n[i]!==0)continue;for(const sg of [1,-1]){const d=[0,0,0];d[i]=sg;const p=proj(d);const l=Math.hypot(p[0],p[1])||1;const dot=(p[0]*dx+p[1]*dy)/l;if(dot>bd){bd=dot;best=d}}}
@@ -766,7 +729,7 @@ function dirFor(n,dx,dy){
    neighbouring faces across the edges. Letters never leave their face. A few passes let faces
    settle against each other; ties favour the layout that moves letters least. */
 let NB=null;
-/* recomputed each time: turns and twists move stickers, so neighbours change */
+/* recomputed each time: turns move stickers, so neighbours change */
 function neighbours(){NB={};G.stickers.forEach(a=>NB[a.id]=G.stickers.filter(b=>b!==a&&adj(a,b)).map(b=>b.id));return NB}
 function stranded(){const nb=neighbours();return G.stickers.filter(s=>s.ch&&!nb[s.id].some(id=>G.stickers[id].ch)).length}
 const canCollapse=()=>(G.collapses||0)<cfg.freeCollapses||G.coins>=cfg.collapseCost;
@@ -874,7 +837,7 @@ function routeIntact(){
   return G.stickers.every(s=>!s.ch||owned.has(s.id));
 }
 /* ---------- undo ----------
-   Each record stores sticker ids, which survive twists and turns, so undoing puts letters back on
+   Each record stores sticker ids, which survive turns, so undoing puts letters back on
    the same stickers wherever they've moved. Actions that reshuffle many letters at once (collapse,
    sweep, reshuffle, new letters, a new level) clear the history instead of being undoable. */
 const UNDO_MAX=30;
@@ -1005,8 +968,6 @@ const byId=id=>G.stickers[id];
 stage.addEventListener('pointerdown',e=>{
   if(!playing||busy||G.done||e.button>0) return;
   $('foundPanel').hidden=true;
-  const ar=e.target.closest&&e.target.closest('.arrow');
-  if(ar){e.preventDefault();twist(+ar.dataset.k,+ar.dataset.s,+ar.dataset.l);return}
   try{stage.setPointerCapture(e.pointerId)}catch(_){}
   const t=stickerAt(e.clientX,e.clientY), st=t&&byId(+t.dataset.id);
   gesture={x:e.clientX,y:e.clientY,st,fired:false,kind:st&&st.ch?'trace':'turn'};
@@ -1086,7 +1047,6 @@ function liveEnd(g){
 stage.addEventListener('pointerup',endGesture);
 stage.addEventListener('pointercancel',endGesture);
 
-stage.addEventListener('click',e=>{const ar=e.target.closest&&e.target.closest('.arrow');if(ar&&e.detail===0)twist(+ar.dataset.k,+ar.dataset.s,+ar.dataset.l)});
 
 /* ---------- letter tray ---------- */
 let drag=null;
@@ -1136,7 +1096,7 @@ $('trayReset').onclick=()=>{
 };
 tray.addEventListener('pointercancel',endDrag);
 $('collapseBtn').onclick=()=>{if(!held($('collapseBtn')))collapse()};
-$('nextBtn').onclick=()=>{newLevel(G.level+1,G.coins);if(G.level===cfg.twistUnlock)toast('Twists unlocked.');size();render(true);status();save()};
+$('nextBtn').onclick=()=>{newLevel(G.level+1,G.coins);size();render(true);status();save()};
 document.addEventListener('keydown',e=>{
   if(e.target.closest&&e.target.closest('input')) return;
   if(e.key==='Escape'){back();return}
@@ -1174,13 +1134,11 @@ document.querySelectorAll('.jelly').forEach(el=>{
 });
 
 /* ---------- sizing + boot ---------- */
-/* the stage is the largest square that fits between the bars; the cube is framed a little looser
-   once twist arrows appear around it */
+/* the stage is the largest square that fits between the bars */
 function size(){
   const r=$('stageWrap').getBoundingClientRect();
   const side=Math.max(200,Math.floor(Math.min(r.width,r.height)));
-  const arrows=G&&twistsOn();
-  S=Math.round(side/(arrows?6.5:5.2));
+  S=Math.round(side/5.2);
   const st=document.documentElement.style;
   st.setProperty('--side',side+'px');st.setProperty('--s',S+'px');st.setProperty('--h',(S/2)+'px');
   if(G) render();
