@@ -1,8 +1,8 @@
 // Twistword offline cache. Bump VERSION when you publish changes so old caches are cleared.
 const VERSION = 'twistword-2026-10-23';
-const FILES = ['./', 'index.html', 'css/style.css', 'js/game.js', 'data/words.js', 'manifest.webmanifest',
-  'icons/favicon.svg', 'icons/icon-192.png', 'icons/icon-512.png',
-  'fonts/Figtree-Medium.ttf', 'fonts/Figtree-SemiBold.ttf', 'fonts/Figtree-Bold.ttf', 'fonts/Figtree-ExtraBold.ttf'];
+const FILES = ['./', 'index.html', 'style.css', 'game.js', 'words.js', 'manifest.webmanifest',
+  'favicon.svg', 'icon-192.png', 'icon-512.png',
+  'Figtree-Medium.ttf', 'Figtree-SemiBold.ttf', 'Figtree-Bold.ttf', 'Figtree-ExtraBold.ttf'];
 self.addEventListener('install', e => e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES)).then(() => self.skipWaiting())));
 self.addEventListener('activate', e => e.waitUntil(caches.keys()
   .then(ks => Promise.all(ks.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim())));
