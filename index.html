@@ -70,6 +70,10 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--yellow);outline
 @keyframes spend{30%{background:var(--red)}}
 .pill.menu{background:var(--ink);width:36px;flex:none;padding:0;color:var(--paper);cursor:pointer}
 .pill.menu svg{width:18px;height:18px}
+.pill.undo{background:var(--paper);color:var(--ink);transition:opacity .2s,background .2s}
+.pill.undo:disabled{background:#1F1F1F;color:#5A5A5A;cursor:default}
+.pill.undo:not(:disabled):active{transform:scale(.9)}
+.pill.undo svg{width:19px;height:19px}
 
 /* ---------- the cube and what floats over it ---------- */
 .stage-wrap{flex:1 1 auto;min-height:0;position:relative;display:grid;place-items:center}
@@ -262,6 +266,8 @@ html.calm .bg{animation-duration:10s!important}
       <svg viewBox="0 0 100 100" aria-hidden="true"><circle class="track" cx="50" cy="50" r="42"/><circle class="fill" id="ring" cx="50" cy="50" r="42" stroke-dasharray="263.9" stroke-dashoffset="263.9"/></svg>
       <b id="lettersVal">54</b></div>
     <div class="pill coins jelly" id="coinTile" style="--d:3" title="Coins"><span class="coin" aria-hidden="true"></span><b id="coins">0</b></div>
+    <button class="pill menu undo" id="undoBtn" title="Undo the last word or placed letter" aria-label="Undo" disabled>
+      <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 4.5 3.5 8.5l4 4"/><path d="M4 8.5h7.5a5 5 0 0 1 0 10H9"/></svg></button>
     <button class="pill menu" id="menuBtn" title="Menu" aria-label="Menu">
       <svg viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M2.5 4h13M2.5 9h13M2.5 14h13"/></svg></button>
   </header>
@@ -340,6 +346,7 @@ html.calm .bg{animation-duration:10s!important}
       <li><b>Twist</b>Tap the arrows around the cube to turn a row or column. Free, once twists unlock.</li>
       <li><b>Turn</b>Drag the empty space around the cube, or tap and drag the turn pad, to see other faces.</li>
       <li><b>Free letters</b>Drag a tray letter onto an empty square. A <b style="display:inline;font-size:inherit">?</b> fits any word. New letters buys a fresh set.</li>
+      <li><b>Undo</b>Takes back the last word you made or the last tray letter you placed, coins and all. Collapse, sweep, reshuffle and new letters can't be undone.</li>
       <li><b>Collapse</b>Slides each face's letters together so stranded ones touch again.</li>
       <li><b>Sweep</b>When nothing is left to spell, clear the last few letters for coins.</li>
       <li><b>No help</b>Clear the cube without sweeping for an extra bonus.</li>
@@ -391,9 +398,10 @@ const CFG_META=[
   ['sweepCost','Sweep cost per letter',0,200],
   ['freeCollapses','Free collapses per level',0,10],
   ['collapseCost','Collapse cost after free ones',0,500],
-  ['startCoins','Starting coins',0,5000]
+  ['startCoins','Starting coins',0,5000],
+  ['undoCost','Undo cost',0,500]
 ];
-const DEFAULT_CFG={minLen:2,coinsPerLetter:2,longBonus:5,crossBonus:4,levelBonus:25,clearBonus:100,cleanBonus:100,twistUnlock:3,traySize:5,trayResetCost:50,freeCollapses:1,collapseCost:60,wildsPerSet:1,sweepMax:8,sweepCost:15,startCoins:100};
+const DEFAULT_CFG={minLen:2,coinsPerLetter:2,longBonus:5,crossBonus:4,levelBonus:25,clearBonus:100,cleanBonus:100,twistUnlock:3,traySize:5,trayResetCost:50,freeCollapses:1,collapseCost:60,wildsPerSet:1,sweepMax:8,sweepCost:15,startCoins:100,undoCost:0};
 
 /* ---------- dictionary ---------- */
 const DICT=new Set(), PREF=new Set();
@@ -513,7 +521,7 @@ function newLevel(level,coins,mode){
     if(!words){words=[];cells.forEach(c=>{if(!c.ch)c.ch=pick(BAG)})}
     words.forEach(w=>usedW.add(w.word));solution.push(...words);
   }
-  G={mode,level,coins,stickers:st,found:[],twistsUsed:0,lettersAdded:0,done:false,earned:0,spent:0,note:null,tray:makeTray(),solution,_deal:true};
+  G={mode,level,coins,stickers:st,found:[],twistsUsed:0,lettersAdded:0,done:false,earned:0,spent:0,note:null,tray:makeTray(),solution,_deal:true,undo:[]};
   path=[];
   $('sheet').hidden=true;
 }
@@ -620,6 +628,7 @@ function hud(){
   const fc=Math.max(0,cfg.freeCollapses-(G.collapses||0)),cs=$('collapseSub');
   cs.textContent=fc?(fc>1?`${fc} free`:'free'):cfg.collapseCost;cs.classList.toggle('free',!!fc);
   $('trayResetSub').textContent=cfg.trayResetCost;
+  {const u=$('undoBtn'),n=(G.undo||[]).length;u.disabled=!n||G.done;u.title=n?`Undo the last ${G.undo[n-1].t==='w'?'word':'placed letter'}${cfg.undoCost?` · ${cfg.undoCost} coins`:''}`:'Nothing to undo'}
   if(!G.tray) G.tray=makeTray();
   const deal=G._deal;G._deal=false;const mid=(G.tray.length-1)/2;
   $('tray').innerHTML=G.tray.map((c,i)=>`<button class="tl${c==='?'?' wild':''}${deal?' deal':''}" style="--o:${(i-mid).toFixed(2)};--i:${i}" data-i="${i}" aria-label="${c==='?'?'Wildcard, any letter':'Letter '+c.toUpperCase()}">${c}</button>`).join('')+
@@ -807,7 +816,7 @@ function collapse(){
   const moved=collapseLetters();
   if(!moved){render();toast('The letters are already as close together as they can get.');return}
   if(!free){G.coins-=cfg.collapseCost;G.spent+=cfg.collapseCost}
-  G.collapses=(G.collapses||0)+1;path=[];
+  G.collapses=(G.collapses||0)+1;path=[];clearUndo();
   render();
   const after=stranded();
   preview('collapse','ok',before>after?`${before-after} letter${before-after===1?'':'s'} rescued`:`${moved} letters moved`);
@@ -820,7 +829,7 @@ function sweep(){
   const left=G.stickers.filter(s=>s.ch),cost=left.length*cfg.sweepCost;
   if(left.length>cfg.sweepMax){toast(`Sweep works once ${cfg.sweepMax} or fewer letters are left.`);return}
   if(G.coins<cost){toast(`Sweeping ${left.length} letters costs ${cost} coins.`);return}
-  G.coins-=cost;G.spent+=cost;G.swept=(G.swept||0)+left.length;
+  G.coins-=cost;G.spent+=cost;G.swept=(G.swept||0)+left.length;clearUndo();
   busy=true;left.forEach(s=>elById[s.id]&&elById[s.id].classList.add('pop'));
   preview('swept','ok',`−${cost}`);
   setTimeout(()=>{left.forEach(s=>s.ch=null);busy=false;render();progress()},reduce?0:230);
@@ -856,13 +865,38 @@ function routeIntact(){
   const owned=new Set();rw.forEach(w=>{if(w.state==='intact')w.ids.forEach(id=>owned.add(id))});
   return G.stickers.every(s=>!s.ch||owned.has(s.id));
 }
+/* ---------- undo ----------
+   Each record stores sticker ids, which survive twists and turns, so undoing puts letters back on
+   the same stickers wherever they've moved. Actions that reshuffle many letters at once (collapse,
+   sweep, reshuffle, new letters, a new level) clear the history instead of being undoable. */
+const UNDO_MAX=30;
+function pushUndo(rec){(G.undo=G.undo||[]).push(rec);if(G.undo.length>UNDO_MAX)G.undo.shift()}
+function clearUndo(){G.undo=[]}
+function undo(){
+  if(busy||drag||G.done||!playing) return;
+  const rec=G.undo&&G.undo[G.undo.length-1];if(!rec) return;
+  const cost=cfg.undoCost||0;
+  if(cost&&G.coins<cost){toast(`Undo costs ${cost} coins.`);return}
+  G.undo.pop();path=[];
+  if(cost){G.coins-=cost;G.spent+=cost}
+  if(rec.t==='w'){
+    rec.cells.forEach(([id,ch],i)=>{const s=G.stickers[id];s.ch=ch;s.born=i});
+    G.coins-=rec.c;G.earned-=rec.c;G.found.pop();G.solution=rec.sol;
+    preview(rec.w,'bad',`undone · −${rec.c}`);
+  } else {
+    const s=G.stickers[rec.id];s.ch=rec.old;s.born=0;G.lettersAdded--;G.tray.splice(rec.i,0,rec.ch);
+    preview(rec.ch,'bad','back in the tray');
+  }
+  render();juice($('coinTile'));status();save();
+}
 function accept(word,used){
   const uk=used.map(s=>s.id).sort((a,b)=>a-b).join();
   (G.solution||[]).forEach(w=>{if(!w.done&&w.ids.slice().sort((a,b)=>a-b).join()===uk)w.done=true});
+  pushUndo({t:'w',w:word,cells:used.map(s=>[s.id,s.ch]),c:0,sol:JSON.parse(JSON.stringify(G.solution||[]))});
   const nf=facesIn(used);
   const c=word.length*cfg.coinsPerLetter+(word.length>=6?cfg.longBonus:0)+(nf-1)*cfg.crossBonus;
   const pts=used.map(st=>elById[st.id]).filter(Boolean).map(centerOf);
-  G.coins+=c;G.earned+=c;G.found.push({w:word,c,nf});
+  G.coins+=c;G.earned+=c;G.found.push({w:word,c,nf});G.undo[G.undo.length-1].c=c;
   preview(word,'ok',nf>1?`${nf} faces`:'');
   if(!reduce){stage.style.setProperty('--k',Math.min(4,word.length-2));stage.classList.remove('thump');void stage.offsetWidth;stage.classList.add('thump');setTimeout(()=>stage.classList.remove('thump'),340)}
   spawnCoins(pts,c);
@@ -893,7 +927,7 @@ function progress(){
   status();save();
 }
 function reshuffle(){
-  const filled=G.stickers.filter(s=>s.ch), letters=filled.map(s=>s.ch);
+  const filled=G.stickers.filter(s=>s.ch), letters=filled.map(s=>s.ch);clearUndo();
   for(let t=0;t<300;t++){shuffle(letters);filled.forEach((s,i)=>s.ch=letters[i]);if(anyWord()){render(true);status();return}}
   render();
   const left=G.stickers.filter(s=>s.ch).length,acts=[];
@@ -1077,7 +1111,7 @@ function endDrag(e){
   if(e.type==='pointercancel') return;
   if(d.over){
     const ch=G.tray[d.i];
-    const swap=!!d.over.ch;d.over.ch=ch;d.over.born=0;G.lettersAdded++;G.tray.splice(d.i,1);
+    const swap=!!d.over.ch;pushUndo({t:'p',id:d.over.id,old:d.over.ch,ch,i:d.i});d.over.ch=ch;d.over.born=0;G.lettersAdded++;G.tray.splice(d.i,1);
     render();preview(ch,'ok',swap?(G.tray.length?`swapped · ${G.tray.length} left`:'swapped · tray empty'):G.tray.length?`placed · ${G.tray.length} left`:'placed · tray empty');status();save();
   } else {
     const t=stickerAt(e.clientX,e.clientY);
@@ -1089,7 +1123,7 @@ $('trayReset').onclick=()=>{
   if(held($('trayReset'))) return;
   if(busy||G.done||drag) return;
   if(G.coins<cfg.trayResetCost){toast(`New letters cost ${cfg.trayResetCost} coins. Make words to earn more.`);return}
-  G.coins-=cfg.trayResetCost;G.spent+=cfg.trayResetCost;G.trayResets=(G.trayResets||0)+1;G.tray=makeTray();G._deal=true;
+  G.coins-=cfg.trayResetCost;G.spent+=cfg.trayResetCost;G.trayResets=(G.trayResets||0)+1;G.tray=makeTray();G._deal=true;clearUndo();
   hud();status();save();toast(`New set of ${G.tray.length} letters.`);
 };
 tray.addEventListener('pointercancel',endDrag);
@@ -1099,6 +1133,7 @@ document.addEventListener('keydown',e=>{
   if(e.target.closest&&e.target.closest('input')) return;
   if(e.key==='Escape'){back();return}
   if(!playing||!$('pause').hidden||!$('info').hidden) return;
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();undo();return}
   const m={ArrowLeft:[1,-1],ArrowRight:[1,1],ArrowUp:[0,1],ArrowDown:[0,-1]}[e.key];
   if(m){e.preventDefault();turnCube(m[0],m[1])}
 });
@@ -1197,6 +1232,7 @@ $('pNewRun').onclick=newRun;
 $('tHow').onclick=()=>openInfo('play');
 $('tSettings').onclick=()=>openInfo('tune');
 $('menuBtn').onclick=openPause;
+$('undoBtn').onclick=undo;
 $('pResume').onclick=resume;
 $('pHow').onclick=()=>openInfo('play');
 $('pSettings').onclick=()=>openInfo('tune');
