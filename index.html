@@ -81,6 +81,15 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--yellow);outline
 .stage-wrap{flex:1 1 auto;min-height:0;position:relative;display:grid;place-items:center}
 .stage{position:relative;width:var(--side);height:var(--side);touch-action:none;user-select:none;-webkit-user-select:none;perspective:calc(var(--s) * 13);cursor:grab}
 .cube{position:absolute;left:50%;top:50%;width:0;height:0;transform-style:preserve-3d;transform:rotateX(-35.264deg) rotateY(-45deg)}
+/* level intro: the cube pops in and tumbles once round each screen axis, so every face shows.
+   The individual rotate/scale properties apply on top of the resting view, so it lands exactly home. */
+.cube.intro{animation:intro 1.15s both}
+@keyframes intro{
+  0%{scale:.5;rotate:y 0deg;animation-timing-function:cubic-bezier(.5,0,.3,1)}
+  22%{scale:1}
+  50%{scale:1;rotate:y 360deg;animation-timing-function:steps(1,end)}
+  50.1%{rotate:x 0deg;animation-timing-function:cubic-bezier(.5,0,.3,1)}
+  100%{scale:1;rotate:x -360deg}}
 .cubie{position:absolute;left:0;top:0;transform-style:preserve-3d}
 .face{position:absolute;width:var(--s);height:var(--s);left:calc(var(--s) * -.5);top:calc(var(--s) * -.5);background:var(--plastic);backface-visibility:hidden;-webkit-backface-visibility:hidden}
 .face:not(.sticker){pointer-events:none}
@@ -930,7 +939,7 @@ function reshuffle(){
   render();
   const left=G.stickers.filter(s=>s.ch).length,acts=[];
   if(left<=cfg.sweepMax) acts.push([`Sweep ${left} · ${left*cfg.sweepCost}`,sweep,true]);
-  acts.push(['Restart level',()=>{newLevel(G.level,G.coins);render(true);status();save()},!acts.length]);
+  acts.push(['Restart level',()=>{newLevel(G.level,G.coins);render(true);status();save();introSpin()},!acts.length]);
   G.note={msg:"These letters can't form a word",tone:'warn',actions:acts};status();
 }
 function complete(cleared){
@@ -1124,7 +1133,7 @@ $('trayReset').onclick=()=>{
 };
 tray.addEventListener('pointercancel',endDrag);
 $('collapseBtn').onclick=()=>{if(!held($('collapseBtn')))collapse()};
-$('nextBtn').onclick=()=>{newLevel(G.level+1,G.coins);size();render(true);status();save()};
+$('nextBtn').onclick=()=>{newLevel(G.level+1,G.coins);size();render(true);status();save();introSpin()};
 document.addEventListener('keydown',e=>{
   if(e.target.closest&&e.target.closest('input')) return;
   if(e.key==='Escape'){back();return}
@@ -1273,7 +1282,14 @@ function showTitle(){
   $('title').querySelectorAll('.logo span,.mbtn').forEach(el=>{el.style.animation='none';void el.offsetWidth;el.style.animation=''});
 }
 function enterPlay(){
-  $('title').hidden=true;$('pause').hidden=true;playing=true;size();render(true);status();save();
+  $('title').hidden=true;$('pause').hidden=true;playing=true;size();render(true);status();save();introSpin();
+}
+/* spin the new cube round so players see that every side has letters; input waits until it lands */
+function introSpin(){
+  if(reduce||!G||G.mode==='tutorial') return;
+  clearTimeout(introSpin.t);busy=true;path=[];paintSel();
+  cubeEl.classList.remove('intro');void cubeEl.offsetWidth;cubeEl.classList.add('intro');
+  introSpin.t=setTimeout(()=>{cubeEl.classList.remove('intro');busy=false},1180);
 }
 function continueGame(){
   if(!(saved&&saved.state&&restore(saved.state))){newLevel(saved&&saved.level||1,saved&&typeof saved.coins==='number'?saved.coins:cfg.startCoins,'classic')}
@@ -1287,7 +1303,7 @@ function endless(){
 let runArmed=false;
 function newRun(){
   if(!runArmed){runArmed=true;$('pNewRunSub').textContent='tap again to start over';setTimeout(()=>{runArmed=false;$('pNewRunSub').textContent=''},3000);return}
-  runArmed=false;$('pNewRunSub').textContent='';newLevel(1,cfg.startCoins,'endless');resume();size();render(true);status();save();toast('New endless run.');
+  runArmed=false;$('pNewRunSub').textContent='';newLevel(1,cfg.startCoins,'endless');resume();size();render(true);status();save();introSpin();toast('New endless run.');
 }
 function newGame(){
   if(saved&&saved.state&&!newArmed){newArmed=true;$('tNewSub').textContent='tap again to start over';setTimeout(()=>{if(newArmed&&!$('title').hidden){newArmed=false;$('tNewSub').textContent=''}},3000);return}
