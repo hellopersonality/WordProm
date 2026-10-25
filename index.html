@@ -252,6 +252,8 @@ html.endless #goalClear,html.endless #collapseBtn{display:none}
 .coach.bump{animation:none}.coach.bump p{animation:deal .4s cubic-bezier(.2,1.5,.4,1) both}
 .finger{position:fixed;left:0;top:0;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;background:rgba(242,242,242,.88);box-shadow:0 0 0 5px rgba(242,242,242,.28),0 8px 18px rgba(0,0,0,.4);pointer-events:none;z-index:46;opacity:0;transition:opacity .2s,scale .2s cubic-bezier(.2,1.8,.4,1);scale:.6}
 .finger.on{opacity:1;scale:1}.finger.press{scale:.78}
+.sticker.coach-spot .tile{animation:spot 1.2s ease-in-out infinite}
+@keyframes spot{0%,100%{box-shadow:inset 0 0 0 calc(var(--s) * .03) rgba(255,214,10,.35)}50%{box-shadow:inset 0 0 0 calc(var(--s) * .07) var(--yellow)}}
 .coach-target{position:relative;animation:beckon 1.2s ease-in-out infinite!important}
 @keyframes beckon{0%,100%{box-shadow:0 0 0 0 rgba(255,214,10,.0)}50%{box-shadow:0 0 0 5px rgba(255,214,10,.85)}}
 html.calm .tile .ch,html.calm .tray-t .tl,html.calm .logo span{animation:none!important}
@@ -571,7 +573,7 @@ function render(fresh){
     for(const fk of Object.keys(FT)){
       const f=document.createElement('div');f.style.transform=FT[fk];
       const s=map[key(p)+'|'+fk];
-      if(s){f.className='face sticker h-'+s.hue+(s.ch?'':' empty')+(fresh?' fresh':'');f.dataset.id=s.id;
+      if(s){f.className='face sticker h-'+s.hue+(s.ch?'':' empty')+(fresh?' fresh':'');f.dataset.id=s.id;if(T&&T.dropId===s.id)f.classList.add('coach-spot');
         {const q=[0,1,2].map(i=>p[i]+s.n[i]*.5);f.style.setProperty('--ph',`${-(clock+(q[0]-q[1]+q[2])*.32+9).toFixed(3)}s`)}
         const t=document.createElement('div');t.className='tile'+(s.ch==='?'?' wild':'');if(s.ch){const c=document.createElement('span');c.className='ch';c.textContent=s.ch;if(s.spin){c.style.transition='none';c.style.transform=`rotate(${s.spin}deg)`;spun.push(c)}t.appendChild(c)}if(s.born!==undefined){f.classList.add('born');f.style.setProperty('--b',s.born)}if(s.slide){t.style.transition='none';t.style.transform=`translate3d(${s.slide[0]*S}px,${s.slide[1]*S}px,${S*.04}px)`;slid.push(t)}f.appendChild(t);elById[s.id]=f;}
       else f.className='face';
@@ -627,7 +629,8 @@ function hud(){
   {const u=$('undoBtn'),n=(G.undo||[]).length;u.disabled=!n||G.done;u.title=n?`Undo the last ${G.undo[n-1].t==='w'?'word':'placed letter'}${cfg.undoCost?` · ${cfg.undoCost} coins`:''}`:'Nothing to undo'}
   if(!G.tray) G.tray=makeTray();
   const deal=G._deal;G._deal=false;const mid=(G.tray.length-1)/2;
-  $('tray').innerHTML=G.tray.map((c,i)=>`<button class="tl${c==='?'?' wild':''}${deal?' deal':''}" style="--o:${(i-mid).toFixed(2)};--i:${i}" data-i="${i}" aria-label="${c==='?'?'Wildcard, any letter':'Letter '+c.toUpperCase()}">${c}</button>`).join('')+
+  const glow=T&&T.step.wait==='place';
+  $('tray').innerHTML=G.tray.map((c,i)=>`<button class="tl${c==='?'?' wild':''}${deal?' deal':''}${glow?' coach-target':''}" style="--o:${(i-mid).toFixed(2)};--i:${i}" data-i="${i}" aria-label="${c==='?'?'Wildcard, any letter':'Letter '+c.toUpperCase()}">${c}</button>`).join('')+
     Array.from({length:Math.max(0,cfg.traySize-G.tray.length)},()=>'<span class="tray-empty"></span>').join('');
   $('found').innerHTML=made?G.found.map(f=>`<span class="w${f.nf>1?' cross':''}">${f.w}<b>+${f.c}</b></span>`).join(''):'<span class="none">No words yet</span>';
   lastHud={level:G.level,made,left};
@@ -1177,11 +1180,11 @@ const VIEW={front:{n:[0,0,1],p:(u,v)=>[u,v,1]},right:{n:[1,0,0],p:(u,v)=>[1,v,-u
 const TUT=[
   {text:'Trace across the letters to spell <b>CAT</b>.',lay:[['front',-1,0,'c'],['front',0,0,'a'],['front',1,0,'t']],target:'cat',hint:'trace'},
   {text:'Words can go diagonally and wrap over an edge. Spell <b>SUN</b>.',lay:[['front',0,0,'s'],['front',1,-1,'u'],['right',-1,-1,'n']],target:'sun',hint:'trace'},
-  {text:'Use the <b>turn pad</b> to turn the cube and see another side. Tap an arrow or drag it.',lay:[],wait:'turn',hint:'pad',el:'pad'},
-  {text:'Drag the <b>G</b> from the tray onto the empty square.',lay:[['front',-1,0,'d'],['front',0,0,'o']],drop:['front',1,0],tray:['g'],wait:'place',hint:'drop'},
+  {text:'Use the <b>turn pad</b> to turn the cube and see another side. Tap an arrow or drag it.',lay:[],wait:'turn',el:'pad'},
+  {text:'Drag the <b>G</b> from the tray onto the empty square.',lay:[['front',-1,0,'d'],['front',0,0,'o']],drop:['front',1,0],tray:['g'],wait:'place'},
   {text:'Now spell <b>DOG</b>.',target:'dog',hint:'trace'},
-  {text:'Made a mistake? Tap <b>undo</b> to take the last move back.',wait:'undo',hint:'tap',el:'undoBtn'},
-  {text:'Letters cut off from the rest can\'t be used. Tap <b>Collapse</b> to pull them together.',lay:[['front',-1,-1,'h'],['front',1,1,'i'],['right',1,1,'p']],wait:'collapse',hint:'tap',el:'collapseBtn'},
+  {text:'Made a mistake? Tap <b>undo</b> to take the last move back.',wait:'undo',el:'undoBtn'},
+  {text:'Letters cut off from the rest can\'t be used. Tap <b>Collapse</b> to pull them together.',lay:[['front',-1,-1,'h'],['front',1,1,'i'],['right',1,1,'p']],wait:'collapse',el:'collapseBtn'},
   {text:'Clear every letter from the cube to finish a level. That\'s all there is to it.',end:true}
 ];
 const stickerAtView=(face,u,v)=>{const f=VIEW[face],pos=f.p(u,v);return G.stickers.find(s=>key(s.n)===key(f.n)&&key(s.pos)===key(pos))};
@@ -1228,7 +1231,8 @@ function endTutorial(){
   then();
 }
 $('coachSkip').onclick=endTutorial;$('coachGo').onclick=endTutorial;
-/* the ghost finger: loops the current step's move until the player starts doing it */
+/* the ghost finger: on tracing steps, loops the trace until the player starts doing it.
+   Steps about a control make that control glow instead. */
 const finger=document.createElement('div');finger.className='finger';finger.setAttribute('aria-hidden','true');document.body.appendChild(finger);
 let fingerRunning=false;
 function fingerLoop(){
@@ -1239,16 +1243,13 @@ function fingerLoop(){
   let pts=[];
   const at=id=>elById[id]?centerOf(elById[id]):null;
   if(st.hint==='trace') pts=(T.ids||[]).map(at).filter(Boolean);
-  else if(st.hint==='drop'){const tl=document.querySelector('.tray-t .tl'),d=T.dropId!=null&&at(T.dropId);if(tl&&d)pts=[centerOf(tl),d]}
-  else if(st.hint==='pad'){const r=$('pad').getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;pts=[[cx,cy],[cx+r.width*.36,cy]]}
-  else if(st.hint==='tap'&&st.el) pts=[centerOf($(st.el))];
   if(!pts.length){finger.classList.remove('on');return}
   /* timeline: appear, press, travel along the points, lift, pause, repeat */
-  const seg=420,travel=Math.max(0,pts.length-1)*seg,cycle=300+travel+(st.hint==='tap'?700:350)+900;
+  const seg=420,travel=Math.max(0,pts.length-1)*seg,cycle=300+travel+350+900;
   const k=(now-T.hintAt)%cycle;let x,y,on=true,press=false;
   if(k<300){[x,y]=pts[0];press=k>150}
   else if(k<300+travel){const q=(k-300)/seg,j=Math.min(pts.length-2,Math.floor(q)),f=q-j,e=f<.5?2*f*f:1-Math.pow(-2*f+2,2)/2;x=pts[j][0]+(pts[j+1][0]-pts[j][0])*e;y=pts[j][1]+(pts[j+1][1]-pts[j][1])*e;press=true}
-  else if(k<300+travel+(st.hint==='tap'?700:350)){[x,y]=pts[pts.length-1];press=st.hint==='tap'?((k-300)%350)<175:false}
+  else if(k<300+travel+350){[x,y]=pts[pts.length-1]}
   else on=false;
   if(on){finger.style.transform=`translate(${x}px,${y}px)`}
   finger.classList.toggle('on',on);finger.classList.toggle('press',on&&press);
