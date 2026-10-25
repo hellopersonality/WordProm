@@ -81,15 +81,19 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--yellow);outline
 .stage-wrap{flex:1 1 auto;min-height:0;position:relative;display:grid;place-items:center}
 .stage{position:relative;width:var(--side);height:var(--side);touch-action:none;user-select:none;-webkit-user-select:none;perspective:calc(var(--s) * 13);cursor:grab}
 .cube{position:absolute;left:50%;top:50%;width:0;height:0;transform-style:preserve-3d;transform:rotateX(-35.264deg) rotateY(-45deg)}
-/* level intro: the cube pops in and tumbles once round each screen axis, so every face shows.
-   The individual rotate/scale properties apply on top of the resting view, so it lands exactly home. */
-.cube.intro{animation:intro 1.15s both}
+/* level intro: the cube pops in and tumbles in one continuous motion, a full turn round the screen's
+   vertical and horizontal axes at once, so every face swings past. The two extra rotations sit in
+   front of the resting view in the same transform list, so they interpolate smoothly and it lands
+   exactly home. Letter bobbing pauses meanwhile to keep the frame rate up. */
+.cube.intro{will-change:transform;animation:intro 1.2s cubic-bezier(.42,0,.2,1) both,introPop .5s cubic-bezier(.2,1.35,.4,1) both}
 @keyframes intro{
-  0%{scale:.5;rotate:y 0deg;animation-timing-function:cubic-bezier(.5,0,.3,1)}
-  22%{scale:1}
-  50%{scale:1;rotate:y 360deg;animation-timing-function:steps(1,end)}
-  50.1%{rotate:x 0deg;animation-timing-function:cubic-bezier(.5,0,.3,1)}
-  100%{scale:1;rotate:x -360deg}}
+  from{transform:rotateX(0deg) rotateY(0deg) rotateX(-35.264deg) rotateY(-45deg)}
+  to{transform:rotateX(-360deg) rotateY(360deg) rotateX(-35.264deg) rotateY(-45deg)}}
+@keyframes introPop{from{scale:.55}}
+.cube.intro .ch{animation-play-state:paused}
+/* word flash: a glowing outline of the cube's silhouette ripples out behind it to the screen edges */
+.ripples{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
+.ripples svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .cubie{position:absolute;left:0;top:0;transform-style:preserve-3d}
 .face{position:absolute;width:var(--s);height:var(--s);left:calc(var(--s) * -.5);top:calc(var(--s) * -.5);background:var(--plastic);backface-visibility:hidden;-webkit-backface-visibility:hidden}
 .face:not(.sticker){pointer-events:none}
@@ -284,6 +288,7 @@ html.calm .bg{animation-duration:10s!important}
 </head>
 <body>
 <div class="bg" aria-hidden="true"></div>
+<div class="ripples" aria-hidden="true"><svg id="ripples"></svg></div>
 <div class="app" id="app">
   <header class="mod bar" aria-label="Level status">
     <div class="pill lvl jelly" id="lvlPill" style="--d:0" title="Level"><b id="lvl">1</b></div>
@@ -724,6 +729,42 @@ function preview(word,cls,extra){
   if(cls) prevT=setTimeout(()=>{p.className='preview';p.innerHTML='';lastPrev=''},1500);
 }
 
+/* ---------- word flash ----------
+   The resting cube projects to a regular hexagon (edge 3 squares, circumradius 3S x sqrt(2/3)).
+   Each ring starts on that outline, then grows past the farthest screen corner while thinning and
+   fading. Longer words send more rings. */
+function ripple(len){
+  if(reduce) return;
+  const svg=$('ripples'),r=stage.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;
+  const R0=3*S*Math.sqrt(2/3)*1.04,far=Math.hypot(Math.max(cx,innerWidth-cx),Math.max(cy,innerHeight-cy));
+  const hex=Array.from({length:6},(_,i)=>{const a=Math.PI/2+i*Math.PI/3;return [Math.cos(a),Math.sin(a)]});
+  const rings=len>=7?3:len>=4?2:1,NS='http://www.w3.org/2000/svg';
+  /* a quick bloom just behind the cube */
+  const bloom=document.createElementNS(NS,'polygon');bloom.setAttribute('fill','#FFF6C8');svg.appendChild(bloom);
+  for(let n=0;n<rings;n++){
+    const g=document.createElementNS(NS,'g'),glow=document.createElementNS(NS,'polygon'),line=document.createElementNS(NS,'polygon');
+    glow.setAttribute('fill','none');glow.setAttribute('stroke','#FFD60A');glow.setAttribute('stroke-linejoin','round');
+    line.setAttribute('fill','none');line.setAttribute('stroke','#FFF9E0');line.setAttribute('stroke-linejoin','round');
+    g.append(glow,line);svg.appendChild(g);
+    const t0=performance.now()+n*140,dur=1150+n*140;
+    (function step(now){
+      const k=Math.min(1,Math.max(0,(now-t0)/dur)),e=1-Math.pow(1-k,3);
+      const rad=R0+(far*1.15-R0)*e,pts=hex.map(([x,y])=>`${(cx+x*rad).toFixed(1)},${(cy+y*rad).toFixed(1)}`).join(' ');
+      glow.setAttribute('points',pts);line.setAttribute('points',pts);
+      const w=S*(.36-.22*e),op=k<.06?k/.06:Math.pow(1-k,1.15);
+      glow.setAttribute('stroke-width',(w*3.2).toFixed(1));glow.setAttribute('stroke-opacity',(op*.32).toFixed(3));
+      line.setAttribute('stroke-width',w.toFixed(1));line.setAttribute('stroke-opacity',(op*.9).toFixed(3));
+      if(k<1) requestAnimationFrame(step); else g.remove();
+    })(performance.now());
+  }
+  const b0=performance.now();
+  (function step(now){
+    const k=Math.min(1,(now-b0)/420),rad=R0*(1+.18*k),pts=hex.map(([x,y])=>`${(cx+x*rad).toFixed(1)},${(cy+y*rad).toFixed(1)}`).join(' ');
+    bloom.setAttribute('points',pts);bloom.setAttribute('fill-opacity',(.32*Math.pow(1-k,2)).toFixed(3));
+    if(k<1) requestAnimationFrame(step); else bloom.remove();
+  })(b0);
+}
+
 /* ---------- moves ---------- */
 const cubies=sel=>[...cubeEl.children].filter(el=>el._pos&&sel(el._pos));
 function rotEls(els,A,deg,ms){els.forEach(el=>{el.style.transition=ms?`transform ${ms}ms cubic-bezier(.25,.1,.2,1)`:'none';el.style.transform=`rotate${A}(${deg}deg) ${base(el._pos)}`})}
@@ -904,6 +945,7 @@ function accept(word,used){
   const pts=used.map(st=>elById[st.id]).filter(Boolean).map(centerOf);
   G.coins+=c;G.earned+=c;G.found.push({w:word,c,nf});G.undo[G.undo.length-1].c=c;
   preview(word,'ok',nf>1?`${nf} faces`:'');
+  ripple(word.length);
   if(!reduce){stage.style.setProperty('--k',Math.min(4,word.length-2));stage.classList.remove('thump');void stage.offsetWidth;stage.classList.add('thump');setTimeout(()=>stage.classList.remove('thump'),340)}
   spawnCoins(pts,c);
   busy=true;
