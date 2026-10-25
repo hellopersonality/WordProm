@@ -1177,7 +1177,7 @@ const VIEW={front:{n:[0,0,1],p:(u,v)=>[u,v,1]},right:{n:[1,0,0],p:(u,v)=>[1,v,-u
 const TUT=[
   {text:'Trace across the letters to spell <b>CAT</b>.',lay:[['front',-1,0,'c'],['front',0,0,'a'],['front',1,0,'t']],target:'cat',hint:'trace'},
   {text:'Words can go diagonally and wrap over an edge. Spell <b>SUN</b>.',lay:[['front',0,0,'s'],['front',1,-1,'u'],['right',-1,-1,'n']],target:'sun',hint:'trace'},
-  {text:'Drag the empty space around the cube to turn it and see another side.',lay:[],wait:'turn',hint:'turn'},
+  {text:'Use the <b>turn pad</b> to turn the cube and see another side. Tap an arrow or drag it.',lay:[],wait:'turn',hint:'pad',el:'pad'},
   {text:'Drag the <b>G</b> from the tray onto the empty square.',lay:[['front',-1,0,'d'],['front',0,0,'o']],drop:['front',1,0],tray:['g'],wait:'place',hint:'drop'},
   {text:'Now spell <b>DOG</b>.',target:'dog',hint:'trace'},
   {text:'Made a mistake? Tap <b>undo</b> to take the last move back.',wait:'undo',hint:'tap',el:'undoBtn'},
@@ -1240,7 +1240,7 @@ function fingerLoop(){
   const at=id=>elById[id]?centerOf(elById[id]):null;
   if(st.hint==='trace') pts=(T.ids||[]).map(at).filter(Boolean);
   else if(st.hint==='drop'){const tl=document.querySelector('.tray-t .tl'),d=T.dropId!=null&&at(T.dropId);if(tl&&d)pts=[centerOf(tl),d]}
-  else if(st.hint==='turn'){const r=stage.getBoundingClientRect();pts=[[r.left+r.width*.14,r.top+r.height*.14],[r.left+r.width*.62,r.top+r.height*.14]]}
+  else if(st.hint==='pad'){const r=$('pad').getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;pts=[[cx,cy],[cx+r.width*.36,cy]]}
   else if(st.hint==='tap'&&st.el) pts=[centerOf($(st.el))];
   if(!pts.length){finger.classList.remove('on');return}
   /* timeline: appear, press, travel along the points, lift, pause, repeat */
