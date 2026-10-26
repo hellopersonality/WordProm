@@ -80,7 +80,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--yellow);outline
 .pill.undo svg{width:19px;height:19px}
 
 /* ---------- the cube and what floats over it ---------- */
-.stage-wrap{flex:1 1 auto;min-height:0;position:relative;display:grid;place-items:center}
+.stage-wrap{flex:1 1 auto;min-height:0;position:relative;display:grid;place-items:center;touch-action:none;cursor:grab}
 .stage{position:relative;width:var(--side);height:var(--side);touch-action:none;user-select:none;-webkit-user-select:none;perspective:calc(var(--s) * 13);cursor:grab}
 .cube{position:absolute;left:50%;top:50%;width:0;height:0;transform-style:preserve-3d;transform:rotateX(-35.264deg) rotateY(-45deg)}
 /* level intro: the cube pops in and tumbles in one continuous motion, a full turn round the screen's
@@ -371,7 +371,7 @@ html.calm .bg{animation-duration:10s!important}
       <li><b>Wrap edges</b>Words can cross onto the next face. Each extra face pays a bonus.</li>
       <li><b>Clear the cube</b>Empty every letter to finish the level and move on.</li>
       <li><b>Always clearable</b>Every cube starts out fully clearable. Collapse and tray letters help when you get stuck.</li>
-      <li><b>Turn</b>Drag the empty space around the cube, or tap and drag the turn pad, to see other faces.</li>
+      <li><b>Turn</b>Swipe anywhere in the empty space around the cube, or use the turn pad, to see other faces.</li>
       <li><b>Free letters</b>Tap a tray letter, then tap a glowing empty square. New letters buys a fresh set.</li>
       <li><b>Undo</b>Takes back the last word you made or the last tray letter you placed, coins and all. Collapse, sweep, reshuffle and new letters can't be undone.</li>
       <li><b>Collapse</b>Slides each face's letters together so stranded ones touch again.</li>
@@ -1016,7 +1016,7 @@ function traceTarget(cx,cy){
 /* ---------- input ---------- */
 function stickerAt(x,y){const el=document.elementFromPoint(x,y);const t=el&&el.closest&&el.closest('.sticker');return t&&stage.contains(t)?t:null}
 const byId=id=>G.stickers[id];
-stage.addEventListener('pointerdown',e=>{
+function stageDown(e){
   if(!playing||busy||G.done||e.button>0) return;
   $('foundPanel').hidden=true;
   if(picked!=null){e.preventDefault();const t=stickerAt(e.clientX,e.clientY),st=t&&byId(+t.dataset.id);if(st&&canTake(st))placeLetter(picked,st);else setPick(null);return}
@@ -1025,6 +1025,15 @@ stage.addEventListener('pointerdown',e=>{
   gesture={x:e.clientX,y:e.clientY,st,fired:false,kind:st&&st.ch?'trace':'turn'};
   if(gesture.kind==='trace'){path=[st];paintSel();preview(st.ch)}
   e.preventDefault();
+}
+stage.addEventListener('pointerdown',stageDown);
+/* swiping works anywhere in the empty space around the cube, not just inside its square: a press that
+   lands on the background or the play area (never on a button, bar, panel or menu) starts a turn */
+document.addEventListener('pointerdown',e=>{
+  const t=e.target;if(!t||!t.closest||stage.contains(t)) return;
+  if(!$('pause').hidden||!$('info').hidden||!$('title').hidden) return;
+  if(t.closest('button,input,select,label,a,.pill,.mod,.dock,.coach,.notice,.screen,.overlay,.update,#update,.sheet')) return;
+  stageDown(e);
 });
 stage.addEventListener('pointermove',e=>{
   if(!gesture) return;
@@ -1191,7 +1200,7 @@ const VIEW={front:{n:[0,0,1],p:(u,v)=>[u,v,1]},right:{n:[1,0,0],p:(u,v)=>[1,v,-u
 const TUT=[
   {text:'Trace across the letters to spell <b>CAT</b>.',lay:[['front',-1,0,'c'],['front',0,0,'a'],['front',1,0,'t']],target:'cat',hint:'trace'},
   {text:'Words can go diagonally and wrap over an edge. Spell <b>SUN</b>.',lay:[['front',0,0,'s'],['front',1,-1,'u'],['right',-1,-1,'n']],target:'sun',hint:'trace'},
-  {text:'Use the <b>turn pad</b> to turn the cube and see another side. Tap an arrow or drag it.',lay:[],wait:'turn',el:'pad'},
+  {text:'Turn the cube to see another side. <b>Swipe</b> anywhere in the empty space around it, or use the <b>turn pad</b>.',lay:[],wait:'turn',el:'pad',hint:'swipe'},
   {text:'Sometimes a word is a letter short. That\'s what your free letters are for. Tap the <b>G</b>, then tap the glowing square.',lay:[['front',-1,0,'d'],['front',0,0,'o']],drop:['front',1,0],tray:['g','e','r','a','s'],trayPick:'g',wait:'place'},
   {text:'Now spell <b>DOG</b>.',target:'dog',hint:'trace'},
   {text:'Made a mistake? Tap <b>undo</b> to take the last move back.',wait:'undo',el:'undoBtn'},
@@ -1258,6 +1267,7 @@ function fingerLoop(){
   let pts=[];
   const at=id=>elById[id]?centerOf(elById[id]):null;
   if(st.hint==='trace') pts=(T.ids||[]).map(at).filter(Boolean);
+  if(st.hint==='swipe'){const r=$('stage').getBoundingClientRect(),y=r.top+r.height*.16;pts=[[r.left+r.width*.14,y],[r.left+r.width*.86,y]]}
   if(!pts.length){finger.classList.remove('on');return}
   /* timeline: appear, press, travel along the points, lift, pause, repeat */
   const seg=420,travel=Math.max(0,pts.length-1)*seg,cycle=300+travel+350+900;
@@ -1274,7 +1284,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261026-015442';
+const BUILD='20261026-021917';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
