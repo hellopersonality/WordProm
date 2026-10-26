@@ -831,7 +831,7 @@ function fail(){
     document.querySelector('#sheet .card').classList.add('fail');
     $('perf').hidden=true;
     const m=$('failMsg');m.hidden=false;m.textContent=`No word fits and you can't afford new letters. You get a fresh Level ${G.level}.`;
-    const nfc=(G.facesDone||[]).length,rows=[[`${F.length} words`,`+${G.earned}`,'pos'],...(G.faceBonus?[[`${nfc} face${nfc===1?'':'s'} cleared`,`+${G.faceBonus}`,'pos']]:[]),...highlights(),['Letters left',`${left}`],...(G.spent?[['Spent',`−${G.spent}`,'neg']]:[])];
+    const nfc=G.facesPaid||0,rows=[[`${F.length} words`,`+${G.earned}`,'pos'],...(G.faceBonus?[[`${nfc} face${nfc===1?'':'s'} cleared`,`+${G.faceBonus}`,'pos']]:[]),...highlights(),['Letters left',`${left}`],...(G.spent?[['Spent',`−${G.spent}`,'neg']]:[])];
     $('sheetStats').innerHTML=rows.map((r,i)=>`<div style="--i:${i}"><dt>${r[0]}</dt><dd class="${r[2]||''}">${r[1]}${r[3]?`<small>${r[3]}</small>`:''}</dd></div>`).join('');
     $('nextBtn').textContent='Try again';SFX.lose();
     $('sheet').hidden=false;hud();$('nextBtn').focus({preventScroll:true});
@@ -1064,7 +1064,7 @@ function undo(){
   if(cost){G.coins-=cost;G.spent+=cost}
   if(rec.t==='w'){
     rec.cells.forEach(([id,ch],i)=>{const s=G.stickers[id];s.ch=ch;s.born=i});
-    G.coins-=rec.c+(rec.fb||0);G.earned-=rec.c;if(rec.fb){G.faceBonus=(G.faceBonus||0)-rec.fb;G.facesDone=(G.facesDone||[]).filter(f=>!rec.faces.includes(f))}G.found.pop();G.solution=rec.sol;
+    G.coins-=rec.c+(rec.fb||0);G.earned-=rec.c;if(rec.fb){G.faceBonus=(G.faceBonus||0)-rec.fb;G.facesPaid=rec.paidBefore}G.found.pop();G.solution=rec.sol;
     preview(rec.w,'bad',`undone · −${rec.c}`);
   } else {
     const s=G.stickers[rec.id];s.ch=rec.old;s.born=0;G.lettersAdded--;G.tray.splice(rec.i,0,rec.ch);
@@ -1079,17 +1079,21 @@ function accept(word,used){
   const nf=facesIn(used);
   const c=word.length*cfg.coinsPerLetter+(word.length>=6?cfg.longBonus:0)+(nf-1)*cfg.crossBonus;
   /* a face that this word empties for the first time pays a bonus */
-  const faceFx=[];
+  /* faces are counted, not named: turning the cube moves letters between faces, so a face's name means
+     nothing for long. The bonus is paid whenever the number of empty faces passes the most paid so far. */
+  let faceFx=[],nNew=0;const paidBefore=G.facesPaid||0;
   if(G.mode==='classic'){
-    G.facesDone=G.facesDone||[];const usedIds=new Set(used.map(s=>s.id));
-    new Set(used.map(s=>key(s.n))).forEach(fk=>{if(!G.facesDone.includes(fk)&&G.stickers.every(s=>key(s.n)!==fk||!s.ch||usedIds.has(s.id)))faceFx.push(fk)});
+    const usedIds=new Set(used.map(s=>s.id));
+    const empty=Object.keys(FACE_NAME).filter(fk=>G.stickers.every(x=>key(x.n)!==fk||!x.ch||usedIds.has(x.id)));
+    nNew=Math.max(0,empty.length-paidBefore);
+    if(nNew){const usedF=new Set(used.map(x=>key(x.n)));faceFx=empty.filter(fk=>usedF.has(fk));if(!faceFx.length)faceFx=empty}
   }
-  const fb=faceFx.length*cfg.faceBonus;
+  const fb=nNew*cfg.faceBonus;
   const pts=used.map(st=>elById[st.id]).filter(Boolean).map(centerOf);
   G.coins+=c+fb;G.earned+=c;G.found.push({w:word,c,nf});G.undo[G.undo.length-1].c=c;
-  if(faceFx.length){G.faceBonus=(G.faceBonus||0)+fb;G.facesDone.push(...faceFx);Object.assign(G.undo[G.undo.length-1],{fb,faces:faceFx})}
-  preview(word,'ok',[nf>1?`${nf} faces`:'',faceFx.length?`face cleared${fb?` +${fb}`:''}`:''].filter(Boolean).join(' · '));
-  SFX.word(word.length,nf);if(faceFx.length) setTimeout(()=>SFX.face(),reduce?0:260);
+  if(nNew){G.faceBonus=(G.faceBonus||0)+fb;G.facesPaid=paidBefore+nNew;Object.assign(G.undo[G.undo.length-1],{fb,paidBefore})}
+  preview(word,'ok',[nf>1?`${nf} faces`:'',nNew?`face cleared${fb?` +${fb}`:''}`:''].filter(Boolean).join(' · '));
+  SFX.word(word.length,nf);if(nNew) setTimeout(()=>SFX.face(),reduce?0:260);
   ripple(word.length);
   if(!reduce){stage.style.setProperty('--k',Math.min(4,word.length-2));stage.classList.remove('thump');void stage.offsetWidth;stage.classList.add('thump');setTimeout(()=>stage.classList.remove('thump'),340)}
   spawnCoins(pts,c+fb);
@@ -1219,7 +1223,7 @@ function complete(cleared){
   document.querySelector('#sheet .card').classList.remove('fail');$('failMsg').hidden=true;$('nextBtn').textContent='Next level';
   showPerf(G.earned+(G.faceBonus||0)+bonus-G.spent,clean);SFX.win();
   const F=G.found,hl=highlights();
-  const nfc=(G.facesDone||[]).length;
+  const nfc=G.facesPaid||0;
   const rows=[[`${F.length} words`,`+${G.earned}`,'pos'],...(G.faceBonus?[[`${nfc} face${nfc===1?'':'s'} cleared`,`+${G.faceBonus}`,'pos']]:[]),...hl,['Level bonus',`+${cfg.levelBonus}`,'pos'],['Clear bonus',`+${cfg.clearBonus}`,'pos'],
     ...(clean?[['No-help bonus',`+${cfg.cleanBonus}`,'pos']]:[]),...(G.swept?[['Swept',`${G.swept}`]]:[]),...(G.spent?[['Spent',`−${G.spent}`,'neg']]:[])];
   $('sheetStats').innerHTML=rows.map((r,i)=>`<div style="--i:${i}"><dt>${r[0]}</dt><dd class="${r[2]||''}">${r[1]}${r[3]?`<small>${r[3]}</small>`:''}</dd></div>`).join('');
@@ -1541,7 +1545,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261026-031745';
+const BUILD='20261026-032202';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
