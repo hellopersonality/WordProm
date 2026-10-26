@@ -21,7 +21,7 @@ Everything lives at the top level of the repository, and GitHub Pages serves it 
 
 Pages settings: Deploy from a branch, `main`, folder `/ (root)`.
 
-Each release stamps the same build id into `index.html`, `version.json` and `sw.js`. Open games check
+Before pushing a change, run `python3 tools/release.py`. It stamps the same build id into `index.html`, `version.json` and `sw.js`. Open games check
 `version.json` on start, every 10 minutes and when the tab comes back to the front; updating saves the
 game, reloads, and drops the player straight back where they were.
 
