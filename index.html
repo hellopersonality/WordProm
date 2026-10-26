@@ -617,7 +617,7 @@ function hud(){
   setCoins(G.coins);
   const fc=Math.max(0,cfg.freeCollapses-(G.collapses||0)),cs=$('collapseSub');
   cs.textContent=fc?(fc>1?`${fc} free`:'free'):coinsTxt(cfg.collapseCost);cs.classList.toggle('free',!!fc);
-  $('trayResetSub').textContent=coinsTxt(cfg.trayResetCost);
+  {const free=!!(T&&T.step.freeReset),rs=$('trayResetSub');rs.textContent=free?'free':coinsTxt(cfg.trayResetCost);rs.classList.toggle('free',free)}
   {const u=$('undoBtn'),n=(G.undo||[]).length;u.disabled=!n||G.done;u.title=n?`Undo the last ${G.undo[n-1].t==='w'?'word':'placed letter'}${cfg.undoCost?` · ${cfg.undoCost} coins`:''}`:'Nothing to undo'}
   if(!G.tray) G.tray=makeTray();
   const deal=G._deal;G._deal=false;const mid=(G.tray.length-1)/2;
@@ -1124,7 +1124,12 @@ tray.addEventListener('click',e=>{
 document.addEventListener('pointerdown',e=>{if(picked==null||!e.target.closest)return;if(e.target.closest('#tray')||e.target.closest('#stage'))return;setPick(null)},true);
 $('trayReset').onclick=()=>{
   if(held($('trayReset'))) return;
-  if(busy||G.done||T) return;
+  if(busy||G.done) return;
+  if(T){
+    /* tutorial: the one guided tap is free so the player sees what it does */
+    if(T.step.wait!=='reset') return;
+    G.tray=makeTray();G._deal=true;clearUndo();picked=null;clearDrop();hud();tutEvent('reset');return;
+  }
   if(G.coins<cfg.trayResetCost){toast(`New letters cost ${cfg.trayResetCost} coins. Make words to earn more.`);return}
   G.coins-=cfg.trayResetCost;G.spent+=cfg.trayResetCost;G.trayResets=(G.trayResets||0)+1;G.tray=makeTray();G._deal=true;clearUndo();picked=null;clearDrop();
   hud();status();save();toast(`New set of ${G.tray.length} letters.`);
@@ -1190,7 +1195,8 @@ const TUT=[
   {text:'Sometimes a word is a letter short. That\'s what your free letters are for. Tap the <b>G</b>, then tap the glowing square.',lay:[['front',-1,0,'d'],['front',0,0,'o']],drop:['front',1,0],tray:['g','e','r','a','s'],trayPick:'g',wait:'place'},
   {text:'Now spell <b>DOG</b>.',target:'dog',hint:'trace'},
   {text:'Made a mistake? Tap <b>undo</b> to take the last move back.',wait:'undo',el:'undoBtn'},
-  {text:'You get five free letters a level. Need others? <b>New letters</b> buys a fresh set with coins.',wait:'next',el:'trayReset'},
+  {text:'Don\'t like your free letters? Tap <b>New letters</b> to swap in a fresh set. It\'s free this once.',wait:'reset',freeReset:true,el:'trayReset'},
+  {text:'From now on <b>New letters</b> costs coins, like the price on the button. You earn coins by making words.',wait:'next',el:'trayReset',showCost:true},
   {text:'Letters cut off from the rest can\'t be used. Tap <b>Collapse</b> to pull them together.',lay:[['front',-1,-1,'h'],['front',1,1,'i'],['right',1,1,'p']],wait:'collapse',el:'collapseBtn'},
   {text:'Clear every letter from the cube to finish a level. That\'s all there is to it.',end:true}
 ];
@@ -1221,6 +1227,7 @@ function tutStep(i){
   const c=$('coach');$('coachText').innerHTML=st.text;c.classList.remove('bump');void c.offsetWidth;if(i>0)c.classList.add('bump');
   [...$('coachDots').children].forEach((d,k)=>{d.className=k<i?'done':k===i?'on':''});
   $('coachSkip').hidden=!!st.end;$('coachGo').hidden=!st.end;$('coachNext').hidden=st.wait!=='next';
+  hud();if(st.showCost)juice($('trayResetSub'));
   T.hintAt=performance.now()+700;
 }
 function tutEvent(type){
@@ -1267,7 +1274,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261026-015105';
+const BUILD='20261026-015442';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
