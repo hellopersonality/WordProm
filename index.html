@@ -1333,24 +1333,30 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261026-011227';
-let updateDismissed=null;
+const BUILD='20261026-011618';
+let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
   try{
     const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});if(!r.ok) return;
     const v=(await r.json()).build;
-    if(v&&v!==BUILD&&v!==updateDismissed) $('update').hidden=false;
+    if(v&&v!==BUILD&&v!==updateDismissed){latestBuild=v;$('update').hidden=false;$('updateGo').disabled=false;$('updateGo').textContent='Update'}
   }catch(e){}
 }
+/* Every step is time-boxed so a slow network, service worker or browser quirk can't leave the button
+   stuck. The reload goes to "?v=<build>", a URL no cache has seen, so the browser and GitHub's CDN
+   both hand over the newest page; the query is tidied away once it loads. */
+const within=(p,ms)=>Promise.race([Promise.resolve(p).catch(()=>{}),new Promise(r=>setTimeout(r,ms))]);
 async function applyUpdate(){
-  $('updateGo').disabled=true;$('updateGo').textContent='Updating';
-  for(let i=0;i<60&&(busy||drag);i++) await new Promise(r=>setTimeout(r,50));
+  const btn=$('updateGo');btn.disabled=true;btn.textContent='Updating';
+  const until=Date.now()+1500;while((busy||drag)&&Date.now()<until) await new Promise(r=>setTimeout(r,50));
   if(G&&playing&&G.mode!=='tutorial'){save();try{sessionStorage.setItem('wordprom-resume',G.mode)}catch(e){}}
-  try{await Promise.all(['./','index.html'].map(u=>fetch(u,{cache:'reload'})));
-    const reg=navigator.serviceWorker&&await navigator.serviceWorker.getRegistration();if(reg) await reg.update()}catch(e){}
-  location.reload();
+  try{const reg=navigator.serviceWorker&&await within(navigator.serviceWorker.getRegistration(),800);if(reg&&reg.update)reg.update().catch(()=>{})}catch(e){}
+  await within(fetch('index.html',{cache:'reload'}),1500);
+  location.replace(location.pathname+'?v='+encodeURIComponent(latestBuild||Date.now())+location.hash);
+  setTimeout(()=>location.reload(),4000);
 }
+if(/[?&]v=/.test(location.search)) try{history.replaceState(null,'',location.pathname+location.hash)}catch(e){}
 $('updateGo').onclick=applyUpdate;
 $('updateX').onclick=async()=>{$('update').hidden=true;try{updateDismissed=(await (await fetch('version.json?t='+Date.now(),{cache:'no-store'})).json()).build}catch(e){}};
 setTimeout(checkUpdate,3000);setInterval(checkUpdate,10*60*1000);
