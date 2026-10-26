@@ -56,9 +56,10 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--yellow);outline
 /* ---------- status bar ---------- */
 .bar{display:flex;gap:5px;padding:5px;flex:none}
 .pill{appearance:none;border:0;height:36px;border-radius:var(--r-t);display:flex;align-items:center;justify-content:center;gap:6px;padding:0 12px;font-weight:800;font-size:20px;color:var(--ink);font-variant-numeric:tabular-nums;min-width:0}
-.pill.lvl{background:var(--orange);flex:.6 1 0}
-.pill.words{background:var(--sky);flex:1.1 1 0;cursor:pointer}
-.pill.dial{background:#1E1E1E;flex:.75 1 0;position:relative;overflow:hidden;color:var(--paper)}
+.pill.lvl{background:var(--orange);flex:.5 1 0}
+.pill.lvl[data-len="3"] b{font-size:14px}.pill.lvl[data-len="4"] b{font-size:11px}
+.pill.words{background:var(--sky);flex:.9 1 0;cursor:pointer}
+.pill.dial{background:#1E1E1E;flex:.7 1 0;position:relative;overflow:hidden;color:var(--paper)}
 /* stat pills: a small label over the number */
 .pill.stat{flex-direction:column;gap:2px;height:42px;padding:0 8px}
 .pill.stat .tag{font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;line-height:1;opacity:.62;white-space:nowrap}
@@ -66,7 +67,14 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--yellow);outline
 .pill.stat .val{display:flex;align-items:center;gap:5px}
 .dial .meter{position:absolute;left:7px;right:7px;bottom:4px;height:3px;border-radius:2px;background:#2A2A2A;overflow:hidden}
 .dial .meter i{position:absolute;left:0;top:0;bottom:0;width:100%;background:var(--paper);border-radius:2px;transition:width .6s cubic-bezier(.3,1.4,.5,1)}
-.pill.coins{background:var(--yellow);flex:1.1 1 0}
+.pill.coins{background:var(--yellow);flex:1.55 1 0;cursor:pointer;min-width:0}
+.pill.coins .val b{font-size:19px}
+.pill.coins .val[data-len="4"] b{font-size:17px}
+.pill.coins{padding:0 5px}
+@media (max-width:340px){ html .pill.coins .val[data-len="3"] .coin{display:none} html .pill.coins .val[data-len="5"] b,html .pill.coins .val[data-len="6"] b,html .pill.coins .val[data-len="7"] b{font-size:12.5px} }
+.pill.coins .val[data-len="4"] .coin,.pill.coins .val[data-len="5"] .coin,.pill.coins .val[data-len="6"] .coin,.pill.coins .val[data-len="7"] .coin,.pill.coins .val[data-len="8"] .coin{display:none}
+.pill.coins .val[data-len="5"] b{font-size:15px}
+.pill.coins .val[data-len="6"] b,.pill.coins .val[data-len="7"] b,.pill.coins .val[data-len="8"] b{font-size:13px}
 .pill.coins .coin{width:15px;height:15px}.pill.coins .coin::after{width:6px;height:6px}
 .coin{width:18px;height:18px;border-radius:50%;background:var(--ink);display:grid;place-items:center;flex:none}
 .coin::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--yellow)}
@@ -683,7 +691,7 @@ function hud(){
   const left=G.stickers.filter(s=>s.ch).length, total=G.stickers.length, made=G.found.length;
   if(lastHud.level!==undefined&&lastHud.level!==G.level) juice($('lvlPill'));
   document.documentElement.classList.toggle('endless',isEndless());
-  $('lvl').textContent=isEndless()?'∞':G.level;$('lvlPill').title=isEndless()?'Endless':'Level';$('lvlTag').textContent=isEndless()?'Endless':'Level';
+  $('lvl').textContent=isEndless()?'∞':G.level;$('lvlPill').dataset.len=String($('lvl').textContent).length;$('lvlPill').title=isEndless()?'Endless':'Level';$('lvlTag').textContent=isEndless()?'Endless':'Level';
   $('wordsVal').textContent=made;
   if(lastHud.made!==undefined&&made>lastHud.made) juice($('wordsPill'));
   $('lettersVal').textContent=left;
@@ -707,7 +715,15 @@ function hud(){
 
 /* ---------- coins: counter, particles ---------- */
 let shown=null,inFlight=0,coinTween=0;
-function drawCoins(){$('coins').textContent=shown}
+/* up to 99,999 shows in full; beyond that it abbreviates (100K, 1.25M) so the pill never overflows */
+function fmtCoins(n){
+  if(n<1e5) return String(n);
+  const f=(v,u)=>{const x=Math.floor(v*(v<10?100:v<100?10:1))/(v<10?100:v<100?10:1);return String(x).replace(/\.0+$/,'')+u};
+  if(n<1e6) return Math.floor(n/1e3)+'K';
+  if(n<1e9) return f(n/1e6,'M');
+  return f(n/1e9,'B');
+}
+function drawCoins(){const t=fmtCoins(shown),c=$('coins');c.textContent=t;c.parentNode.dataset.len=t.length;$('coinTile').title=`${shown.toLocaleString()} coins`}
 function setCoins(v){
   if(shown===null){shown=v;drawCoins();return}
   if(inFlight>0||v===shown) return;
@@ -1516,6 +1532,7 @@ $('trayReset').onclick=()=>{
   hud();status();save();toast(`New set of ${G.tray.length} letters.`);
 };
 $('collapseBtn').onclick=()=>{if(!held($('collapseBtn')))collapse()};
+$('coinTile').onclick=()=>toast(`${(G?G.coins:0).toLocaleString()} coins`);
 $('nextBtn').onclick=()=>{newLevel(G.failed?G.level:G.level+1,G.coins);size();render(true);status();save();introSpin()};
 document.addEventListener('keydown',e=>{
   if(e.target.closest&&e.target.closest('input')) return;
@@ -1665,7 +1682,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261026-033840';
+const BUILD='20261026-034901';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
