@@ -170,6 +170,7 @@ html.endless #goalClear,html.endless #collapseBtn{display:none}
 }
 .stats div{display:flex;justify-content:space-between;gap:12px;font-size:14px;font-weight:600;animation:deal .4s cubic-bezier(.2,1.5,.4,1) both;animation-delay:calc(var(--i) * 60ms + .25s)}
 .stats dt{color:var(--fog)} .stats dd{margin:0}
+.stats .hl{color:var(--paper);font-weight:800;letter-spacing:.06em}.stats .hl small{color:var(--fog);font-weight:600;letter-spacing:0;margin-left:8px;font-size:12px}
 .stats .pos{color:var(--yellow)} .stats .neg{color:var(--red)}
 .card .btn{padding:16px;font-size:17px;border-radius:20px}
 @keyframes dealIn{from{transform:translateY(-60px) rotate(-8deg) scale(.85);opacity:0}}
@@ -1082,9 +1083,15 @@ function complete(cleared){
   G.coins+=bonus;
   $('sheetTitle').textContent=`Level ${G.level} cleared`;
   showPerf(G.earned+bonus-G.spent,clean);
-  const rows=[['Words',`${G.found.length}`],['From words',`+${G.earned}`,'pos'],['Level bonus',`+${cfg.levelBonus}`,'pos'],['Clear bonus',`+${cfg.clearBonus}`,'pos'],
+  const F=G.found, up=w=>w.toUpperCase();
+  const longest=F.reduce((a,f)=>!a||f.w.length>a.w.length||(f.w.length===a.w.length&&f.c>a.c)?f:a,null);
+  const best=F.reduce((a,f)=>!a||f.c>a.c?f:a,null);
+  const hl=[];
+  if(longest&&longest.w.length>=5) hl.push(['Longest word',up(longest.w),'hl',`${longest.w.length} letters`]);
+  if(best&&best!==longest&&best.nf>=2) hl.push(['Best word',up(best.w),'hl',`+${best.c}`]);
+  const rows=[[`${F.length} words`,`+${G.earned}`,'pos'],...hl,['Level bonus',`+${cfg.levelBonus}`,'pos'],['Clear bonus',`+${cfg.clearBonus}`,'pos'],
     ...(clean?[['No-help bonus',`+${cfg.cleanBonus}`,'pos']]:[]),...(G.swept?[['Swept',`${G.swept}`]]:[]),...(G.spent?[['Spent',`−${G.spent}`,'neg']]:[])];
-  $('sheetStats').innerHTML=rows.map((r,i)=>`<div style="--i:${i}"><dt>${r[0]}</dt><dd class="${r[2]||''}">${r[1]}</dd></div>`).join('');
+  $('sheetStats').innerHTML=rows.map((r,i)=>`<div style="--i:${i}"><dt>${r[0]}</dt><dd class="${r[2]||''}">${r[1]}${r[3]?`<small>${r[3]}</small>`:''}</dd></div>`).join('');
   $('sheet').hidden=false;clearNotice();
   inFlight++;hud();setTimeout(()=>{inFlight--;spawnCoins([centerOf($('nextBtn'))],bonus);if(reduce)setCoins(G.coins)},reduce?0:650);
   save();$('nextBtn').focus({preventScroll:true});
@@ -1402,7 +1409,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261026-024747';
+const BUILD='20261026-024948';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
