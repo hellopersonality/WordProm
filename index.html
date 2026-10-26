@@ -304,6 +304,29 @@ html.calm .tile .ch,html.calm .tray-t .tl,html.calm .logo span{animation:none!im
 html.calm *:not(.cubie):not(.ch):not(.bg){animation:none!important;transition:none!important}
 html.calm .bg{animation-duration:10s!important}
 .tune .toggle input{width:auto;accent-color:var(--yellow);transform:scale(1.3)}
+/* ---------- juice ---------- */
+.btn.primary,#tContinue,#tContinue[hidden]~#tNew{position:relative;overflow:hidden;isolation:isolate}
+.btn.primary::after,#tContinue::after,#tContinue[hidden]~#tNew::after{content:"";position:absolute;top:-30%;bottom:-30%;left:-60%;width:36%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.6),transparent);transform:translateX(0) skewX(-20deg);animation:shine 5.5s ease-in-out infinite;animation-delay:1.2s;pointer-events:none}
+@keyframes shine{0%,78%{transform:translateX(0) skewX(-20deg)}100%{transform:translateX(620%) skewX(-20deg)}}
+.drift{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
+.screen .drift{position:absolute}
+.drift i,.bst{position:absolute;left:0;top:0;width:var(--sz);height:calc(var(--sz) * 1.12);border-radius:calc(var(--sz) * .26);display:grid;place-items:center;font-style:normal;font-weight:800;font-size:calc(var(--sz) * .62);color:var(--ink);pointer-events:none}
+.drift i{opacity:.11;animation:drift linear infinite;will-change:transform}
+@keyframes drift{from{transform:translate3d(var(--x),108vh,0) rotate(0deg)}to{transform:translate3d(calc(var(--x) + var(--dx)),-18vh,0) rotate(var(--r1))}}
+.bst{position:fixed;opacity:0;animation:bst 1.6s ease-out both}
+@keyframes bst{0%{opacity:0;transform:translate3d(var(--x),104vh,0) rotate(0)}15%{opacity:.3}100%{opacity:0;transform:translate3d(calc(var(--x) + var(--dx)),-10vh,0) rotate(var(--r1))}}
+.sp{position:fixed;background:var(--yellow);clip-path:polygon(50% 0,60% 38%,100% 50%,60% 62%,50% 100%,40% 62%,0 50%,40% 38%);transform:translate(-50%,-50%) scale(0);pointer-events:none;animation:spk .75s ease-out forwards}
+@keyframes spk{0%{transform:translate(-50%,-50%) scale(0) rotate(0)}40%{transform:translate(-50%,-50%) scale(1) rotate(40deg)}100%{transform:translate(-50%,-50%) scale(0) rotate(90deg)}}
+.tool{position:relative}
+.tool.ready::after{content:"";position:absolute;inset:-3px;border-radius:calc(var(--r-t) + 3px);border:3px solid var(--yellow);opacity:0;animation:ready 1.9s ease-out infinite;pointer-events:none}
+@keyframes ready{0%{opacity:.95;transform:scale(.94)}100%{opacity:0;transform:scale(1.2)}}
+.sticker.hintp .tile{animation:hintp .8s ease-in-out 3;animation-delay:calc(var(--hi,0) * 70ms)}
+@keyframes hintp{0%,100%{box-shadow:inset 0 0 0 0 transparent}50%{box-shadow:inset 0 0 0 calc(var(--s) * .08) var(--yellow)}}
+.perf .tier{animation:stamp .55s cubic-bezier(.2,1.7,.4,1) 1s both}
+@keyframes stamp{from{transform:scale(2.4) rotate(-14deg);opacity:0}}
+.tune .vol input{width:150px;padding:0;background:none;transform:none;accent-color:var(--yellow)}
+.tune .vol input:disabled{opacity:.4}
+html.calm .btn.primary::after,html.calm #tContinue::after,html.calm #tNew::after,html.calm .tool.ready::after,html.calm .drift,html.calm .sp,html.calm .bst{display:none!important}
 </style>
 </head>
 <body>
@@ -697,12 +720,12 @@ function setCoins(v){
    Everything is synthesised with Web Audio (no files). Words climb a pentatonic scale while the player
    keeps chaining them, so any run of words sounds musical. Off with the Sound toggle in Settings. */
 const SFX=(()=>{
-  let ctx=null,master=null,on=true,chain=0,lastWord=0,lastCoin=0,coinStep=0;
-  try{on=localStorage.getItem('twistword-sound')!=='0'}catch(e){}
+  let ctx=null,master=null,on=true,vol=.8,chain=0,lastWord=0,lastCoin=0,coinStep=0;
+  try{on=localStorage.getItem('twistword-sound')!=='0';const v=parseFloat(localStorage.getItem('twistword-volume'));if(v>=0&&v<=1)vol=v}catch(e){}
   const PENT=[0,2,4,7,9], hz=(base,deg)=>base*Math.pow(2,(PENT[deg%5]+12*Math.floor(deg/5))/12);
   function ac(){
     if(!on) return null;
-    if(!ctx){try{ctx=new (window.AudioContext||window.webkitAudioContext)();master=ctx.createGain();master.gain.value=.7;
+    if(!ctx){try{ctx=new (window.AudioContext||window.webkitAudioContext)();master=ctx.createGain();master.gain.value=vol*.9;
       const comp=ctx.createDynamicsCompressor();master.connect(comp);comp.connect(ctx.destination)}catch(e){on=false;return null}}
     if(ctx.state==='suspended') ctx.resume();
     return ctx;
@@ -717,6 +740,10 @@ const SFX=(()=>{
   }
   return {
     get on(){return on},
+    get vol(){return vol},
+    setVol(v){vol=Math.max(0,Math.min(1,v));if(master)master.gain.value=vol*.9;try{localStorage.setItem('twistword-volume',String(vol))}catch(e){}},
+    blip(){tone(hz(523,2),.12,{type:'triangle',vol:.12})},
+    stamp(){tone(120,.22,{type:'sine',vol:.22,slide:.55});tone(240,.12,{type:'triangle',vol:.08})},
     set(v){on=!!v;try{localStorage.setItem('twistword-sound',on?'1':'0')}catch(e){}if(on){ac();tone(hz(523,2),.12,{type:'triangle',vol:.1})}},
     tick(n){tone(hz(330,Math.min(n-1,9)),.06,{type:'triangle',vol:.04})},
     word(len,faces){
@@ -737,6 +764,59 @@ const SFX=(()=>{
     lose(){tone(294,.28,{type:'triangle',vol:.1});tone(220,.5,{type:'triangle',vol:.1,at:.22,slide:.85})}
   };
 })();
+
+/* ---------- juice: sparkles, drifting tiles, hints ----------
+   Everything here is decoration that stays out of the cube's way: transform and opacity only, switched
+   off by Reduce motion, and paused with the tab. */
+function sparkle(x,y,size,col){
+  if(reduce) return;
+  const el=document.createElement('i');el.className='sp';
+  el.style.cssText=`left:${x}px;top:${y}px;width:${size||14}px;height:${size||14}px;${col?`background:${col}`:''}`;
+  $('fx').appendChild(el);setTimeout(()=>el.remove(),800);
+}
+const DRIFT_COLORS=['#FF4A1C','#FFD60A','#5CB8FF','#FF9A1F','#2F6BFF'],DRIFT_LETTERS='WUBIXAEIOTRSNLDH';
+function buildDrift(){
+  document.querySelectorAll('.bg').forEach(bg=>{
+    if(bg.nextElementSibling&&bg.nextElementSibling.classList.contains('drift')) return;
+    const d=document.createElement('div');d.className='drift';d.setAttribute('aria-hidden','true');
+    for(let i=0;i<9;i++){
+      const t=document.createElement('i'),sz=24+Math.random()*26;
+      t.textContent=DRIFT_LETTERS[Math.floor(Math.random()*DRIFT_LETTERS.length)];
+      t.style.cssText=`--x:${(Math.random()*96).toFixed(1)}vw;--dx:${(Math.random()*30-15).toFixed(1)}vw;--sz:${sz.toFixed(0)}px;--r0:${(Math.random()*60-30).toFixed(0)}deg;--r1:${(Math.random()*140-70).toFixed(0)}deg;background:${DRIFT_COLORS[i%5]};animation-duration:${(34+Math.random()*30).toFixed(0)}s;animation-delay:${(-Math.random()*60).toFixed(0)}s`;
+      d.appendChild(t);
+    }
+    bg.after(d);
+  });
+}
+buildDrift();
+/* a quick flurry of letter tiles rising past the cube on big moments */
+function driftBurst(n){
+  if(reduce) return;
+  const fx=$('fx');
+  for(let i=0;i<n;i++){
+    const t=document.createElement('i'),sz=22+Math.random()*22;t.className='bst';
+    t.textContent=DRIFT_LETTERS[Math.floor(Math.random()*DRIFT_LETTERS.length)];
+    t.style.cssText=`--x:${(Math.random()*92).toFixed(1)}vw;--dx:${(Math.random()*24-12).toFixed(1)}vw;--sz:${sz.toFixed(0)}px;--r1:${(Math.random()*160-80).toFixed(0)}deg;background:${DRIFT_COLORS[i%5]};animation-delay:${(i*70+Math.random()*120).toFixed(0)}ms;animation-duration:${(1.3+Math.random()*.6).toFixed(2)}s`;
+    fx.appendChild(t);setTimeout(()=>t.remove(),2400+i*70);
+  }
+}
+/* the logo twinkles now and then */
+setInterval(()=>{
+  if($('title').hidden||document.hidden||reduce) return;
+  const sp=[...document.querySelectorAll('#title .logo span')];if(!sp.length) return;
+  const r=sp[Math.floor(Math.random()*sp.length)].getBoundingClientRect();
+  sparkle(r.left+r.width*(.55+Math.random()*.4),r.top+r.height*Math.random()*.45,13+Math.random()*9,'#fff');
+},2600);
+/* after 15 quiet seconds, one word on a visible face pulses */
+let lastInput=Date.now(),hinted=false;
+['pointerdown','keydown'].forEach(ev=>document.addEventListener(ev,()=>{lastInput=Date.now();hinted=false},true));
+setInterval(()=>{
+  if(!playing||!G||G.done||G.mode==='tutorial'||reduce||document.hidden||busy||hinted) return;
+  if(!$('pause').hidden||!$('info').hidden||!$('title').hidden||Date.now()-lastInput<15000) return;
+  hinted=true;
+  const w=cubeWords(true,VISIBLE)[0];if(!w) return;
+  w.path.forEach((st,i)=>{const el=elById[st.id];if(!el) return;el.style.setProperty('--hi',i);el.classList.add('hintp');setTimeout(()=>el.classList.remove('hintp'),2800)});
+},1000);
 function spawnCoins(points,amount){
   if(!amount) return;
   const tile=$('coinTile'),tr=tile.getBoundingClientRect(),tx=tr.left+18,ty=tr.top+tr.height/2;
@@ -758,6 +838,7 @@ function spawnCoins(points,amount){
       el.style.transform=`translate(${x}px,${y}px) scale(${sc}) rotate(${k*360}deg)`;
       if(k<1){requestAnimationFrame(step);return}
       el.remove();shown+=share;drawCoins();juice(tile);SFX.coin();
+      if(Math.random()<.3){const q=tile.getBoundingClientRect();sparkle(q.left+10+Math.random()*(q.width-20),q.top+5+Math.random()*(q.height-10),9+Math.random()*8)}
       if(--inFlight===0){setCoins(G.coins)}
     })(performance.now());
   }
@@ -840,6 +921,9 @@ function fail(){
 function status(){
   if(G.mode==='tutorial'){clearNotice();return}
   if(G.done) return;
+  {const nw=!anyWord();
+   $('trayReset').classList.toggle('ready',G.coins>=cfg.trayResetCost&&(nw||!G.tray.length));
+   $('collapseBtn').classList.toggle('ready',canCollapse()&&(nw||stranded()>=3))}
   if(!anyWord()&&isStuck()){
     if(G.undo&&G.undo.length){setNotice('No moves left','warn',[['Undo',undo,true],['Give up',fail]]);return}
     fail();return;
@@ -1093,6 +1177,8 @@ function accept(word,used){
   G.coins+=c+fb;G.earned+=c;G.found.push({w:word,c,nf});G.undo[G.undo.length-1].c=c;
   if(nNew){G.faceBonus=(G.faceBonus||0)+fb;G.facesPaid=paidBefore+nNew;Object.assign(G.undo[G.undo.length-1],{fb,paidBefore})}
   preview(word,'ok',[nf>1?`${nf} faces`:'',nNew?`face cleared${fb?` +${fb}`:''}`:''].filter(Boolean).join(' · '));
+  if(word.length>=6||nNew){const cx=pts.reduce((a,q)=>a+q[0],0)/pts.length,cy=pts.reduce((a,q)=>a+q[1],0)/pts.length;for(let k=0;k<(nNew?5:3);k++) setTimeout(()=>sparkle(cx+(Math.random()-.5)*110,cy+(Math.random()-.5)*80,12+Math.random()*12),k*90)}
+  if(nNew) driftBurst(10);else if(word.length>=7) driftBurst(6);
   SFX.word(word.length,nf);if(nNew) setTimeout(()=>SFX.face(),reduce?0:260);
   ripple(word.length);
   if(!reduce){stage.style.setProperty('--k',Math.min(4,word.length-2));stage.classList.remove('thump');void stage.offsetWidth;stage.classList.add('thump');setTimeout(()=>stage.classList.remove('thump'),340)}
@@ -1175,7 +1261,7 @@ function showPerf(score,clean){
   if(!h||G.mode!=='classic'){box.hidden=true;return}
   box.hidden=false;
   const pct=benchPercentile(score,h),tier=TIERS.find(t=>pct<t[0])[1];
-  $('perfTier').textContent=tier;
+  $('perfTier').textContent=tier;setTimeout(()=>{if(!$('sheet').hidden)SFX.stamp()},reduce?0:1000);
   $('perfCap').textContent=`Better than ${pct}% of benchmark runs`;
   const tip=perfTip(clean),tp=$('perfTip');tp.textContent=tip;tp.hidden=!tip;
   /* the curve */
@@ -1417,10 +1503,17 @@ document.addEventListener('keydown',e=>{
 /* ---------- tuning ---------- */
 function buildTune(){
   const box=$('tune');
-  box.innerHTML=`<label class="toggle" for="calmBox">Reduce motion<input type="checkbox" id="calmBox"${reduce?' checked':''}></label><label class="toggle" for="sndBox">Sound<input type="checkbox" id="sndBox"${SFX.on?' checked':''}></label><p>Economy changes apply when you restart the level.</p>`+CFG_META.map(([k,l,mn,mx])=>`<label for="cfg-${k}">${l}<input type="number" id="cfg-${k}" min="${mn}" max="${mx}" value="${cfg[k]}"></label>`).join('')+
-   '<div class="row"><button class="btn primary" id="applyCfg">Apply and restart level</button><button class="btn" id="resetCfg">Defaults</button><button class="btn" id="resetAll">Reset progress</button></div><p class="credits">Word lists: ENABLE, and 12dicts by Alan Beale, both public domain. Font: Figtree, SIL Open Font License.</p>';
-  $('sndBox').onchange=e=>SFX.set(e.target.checked);
+  /* the economy controls are for tuning only: add ?tune to the address to show them */
+  const DEV=/[?&]tune\b/.test(location.search);
+  box.innerHTML=`<label class="toggle" for="calmBox">Reduce motion<input type="checkbox" id="calmBox"${reduce?' checked':''}></label><label class="toggle" for="sndBox">Sound<input type="checkbox" id="sndBox"${SFX.on?' checked':''}></label><label class="toggle vol" for="volBox">Volume<input type="range" id="volBox" min="0" max="100" step="5" value="${Math.round(SFX.vol*100)}"${SFX.on?'':' disabled'}></label>`+
+   (DEV?`<p>Economy changes apply when you restart the level.</p>`+CFG_META.map(([k,l,mn,mx])=>`<label for="cfg-${k}">${l}<input type="number" id="cfg-${k}" min="${mn}" max="${mx}" value="${cfg[k]}"></label>`).join('')+
+   '<div class="row"><button class="btn primary" id="applyCfg">Apply and restart level</button><button class="btn" id="resetCfg">Defaults</button><button class="btn" id="resetAll">Reset progress</button></div>':'')+
+   '<p class="credits">Word lists: ENABLE, and 12dicts by Alan Beale, both public domain. Font: Figtree, SIL Open Font License.</p>';
+  $('sndBox').onchange=e=>{SFX.set(e.target.checked);$('volBox').disabled=!e.target.checked};
+  $('volBox').oninput=e=>SFX.setVol(e.target.value/100);
+  $('volBox').onchange=()=>SFX.blip();
   $('calmBox').onchange=e=>{setCalm(e.target.checked);toast(e.target.checked?'Motion reduced.':'Full motion on.')};
+  if(!DEV) return;
   $('applyCfg').onclick=()=>{CFG_META.forEach(([k,,mn,mx])=>{const v=parseInt($('cfg-'+k).value,10);cfg[k]=isNaN(v)?DEFAULT_CFG[k]:Math.max(mn,Math.min(mx,v))});buildTune();
     if(G){newLevel(G.level,G.coins);size();render(true);status();save();toast(playing?'Settings applied. Level restarted.':'Settings saved.')}};
   $('resetCfg').onclick=()=>{cfg={...DEFAULT_CFG};buildTune()};
@@ -1545,7 +1638,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261026-032202';
+const BUILD='20261026-033342';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
