@@ -970,11 +970,10 @@ function status(){
   if(!anyWord()){
     const left=G.stickers.filter(s=>s.ch).length,acts=[];
     if(left<=cfg.sweepMax&&G.coins>=left*cfg.sweepCost) acts.push([`End early · ${left*cfg.sweepCost}`,sweep,true]);
-    if(canCollapse()) acts.push(['Collapse',collapse,!acts.length]);
     setNotice('No words left','warn',acts);return;
   }
   const lone=stranded();
-  if(lone>=3){setNotice(`${lone} stranded letters`,'warn',canCollapse()?[['Collapse',collapse,true]]:[]);return}
+  if(lone>=3){setNotice(`${lone} stranded letters`,'warn',[]);return}
   clearNotice();
 }
 
@@ -1668,7 +1667,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261026-040550';
+const BUILD='20261026-041039';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
