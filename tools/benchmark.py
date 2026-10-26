@@ -3,7 +3,7 @@
 
 The card plots a player's level score against a histogram of simulated runs. This script plays
 levels with three simple bots (casual, average, skilled) using the game's own scoring, word finder,
-reshuffle, collapse, tray and sweep rules, then writes the resulting histograms into index.html
+collapse, tray and end-early (sweep) rules, then writes the resulting histograms into index.html
 between the /*BENCH:start*/ and /*BENCH:end*/ markers.
 
 It is a model, not data from real players. Re-run it after changing the economy (coin values,
@@ -25,7 +25,7 @@ LO, BIN, NBINS = 100, 10, 40                      # score axis: 100..500 in step
 HOOK = r"""
 window.__bench=(lv,skill)=>{
   newLevel(lv,0,'classic');G.found=[];G.collapses=0;
-  let earned=0,spent=0,swept=0,coll=0,reshuf=0;const tray=G.tray.slice();
+  let earned=0,spent=0,swept=0,coll=0;const tray=G.tray.slice();
   const filled=()=>G.stickers.filter(s=>s.ch);
   const val=w=>{const nf=facesIn(w.path);return w.w.length*cfg.coinsPerLetter+(w.w.length>=6?cfg.longBonus:0)+(nf-1)*cfg.crossBonus};
   const doneF=new Set();
@@ -48,7 +48,6 @@ window.__bench=(lv,skill)=>{
       if(done)continue;
     }
     if(skill!=='casual'&&coll<cfg.freeCollapses){coll++;collapseLetters();if(anyWord())continue}
-    if(left>=3&&reshuf<8){reshuf++;const f=filled(),L=f.map(s=>s.ch);let ok=false;for(let t=0;t<300&&!ok;t++){shuffle(L);f.forEach((s,i)=>s.ch=L[i]);ok=anyWord()}if(ok)continue}
     if(left<=cfg.sweepMax){spent+=left*cfg.sweepCost;swept+=left;filled().forEach(s=>s.ch=null);break}
     return null;                                             /* unwinnable without a restart: not counted */
   }
