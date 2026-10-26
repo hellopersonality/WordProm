@@ -170,6 +170,8 @@ html.endless #goalClear,html.endless #collapseBtn{display:none}
 }
 .stats div{display:flex;justify-content:space-between;gap:12px;font-size:14px;font-weight:600;animation:deal .4s cubic-bezier(.2,1.5,.4,1) both;animation-delay:calc(var(--i) * 60ms + .25s)}
 .stats dt{color:var(--fog)} .stats dd{margin:0}
+.card.fail .ttl{background:var(--red)}
+.failmsg{margin:0;padding:2px 8px 6px;font-size:15px;font-weight:600;line-height:1.3;color:var(--paper)}
 .stats .hl{color:var(--paper);font-weight:800;letter-spacing:.06em}.stats .hl small{color:var(--fog);font-weight:600;letter-spacing:0;margin-left:8px;font-size:12px}
 .stats .pos{color:var(--yellow)} .stats .neg{color:var(--red)}
 .card .btn{padding:16px;font-size:17px;border-radius:20px}
@@ -330,6 +332,7 @@ html.calm .bg{animation-duration:10s!important}
             <p class="cap" id="perfCap"></p>
             <p class="tip" id="perfTip" hidden></p>
           </div>
+          <p class="failmsg" id="failMsg" hidden></p>
           <dl class="stats" id="sheetStats"></dl>
           <button class="btn primary" id="nextBtn">Next level</button>
         </div>
@@ -515,7 +518,7 @@ function restore(st){
   G={...st,note:null};G.stickers=st.stickers.map(s=>({...s}));G.stickers.sort((a,b)=>a.id-b.id);
   G.stickers.forEach(x=>{if(x.ch==='?')x.ch=trayLetter()});if(G.tray)G.tray=G.tray.map(c=>c==='?'?trayLetter():c);G.undo=[];
   path=[];$('sheet').hidden=true;
-  if(G.done){newLevel(G.level+1,G.coins);return true}
+  if(G.done){newLevel(G.failed?G.level:G.level+1,G.coins);return true}
   return true;
 }
 
@@ -726,9 +729,74 @@ function setNotice(msg,tone,actions){
   const m=document.createElement('span');m.className='msg';m.textContent=msg;n.appendChild(m);
   (actions||[]).forEach(([label,fn,primary])=>{const b=document.createElement('button');b.className='btn'+(primary?' primary':'');b.textContent=label;b.onclick=fn;n.appendChild(b)});
 }
+/* ---------- soft lock ----------
+   Stuck means: no word on the cube, none reachable by placing tray letters, and every way out costs
+   more coins than the player has (new letters, sweep, a paid collapse), with no free collapse or
+   reshuffle that would help. Undo is not counted; the notice offers it instead. */
+function wordWithTray(){
+  const nb=neighbours(),cells=G.stickers,found=new Set(G.found.map(f=>f.w)),pool={};
+  G.tray.forEach(c=>pool[c]=(pool[c]||0)+1);
+  let nodes=0,hit=false;const used=new Set();
+  function step(id,ch,str){
+    if(hit) return;
+    if(++nodes>400000){hit=true;return}                 /* too big to prove: assume a way exists */
+    const t=str+ch;
+    if(t.length>=cfg.minLen&&DICT.has(t)&&!found.has(t)){hit=true;return}
+    if(!PREF.has(t)) return;
+    used.add(id);
+    for(const n of nb[id]){
+      if(used.has(n)) continue;const d=cells[n];
+      if(d.ch) step(n,d.ch,t);
+      else for(const c in pool) if(pool[c]>0){pool[c]--;step(n,c,t);pool[c]++}
+    }
+    used.delete(id);
+  }
+  for(const c of cells){
+    if(hit) break;
+    if(c.ch) step(c.id,c.ch,'');
+    else for(const k in pool) if(pool[k]>0){pool[k]--;step(c.id,k,'');pool[k]++}
+  }
+  return hit;
+}
+function isStuck(){
+  if(G.mode!=='classic') return false;
+  if(G.coins>=cfg.trayResetCost) return false;
+  const left=G.stickers.filter(s=>s.ch);
+  if(left.length<=cfg.sweepMax&&G.coins>=left.length*cfg.sweepCost) return false;
+  if(wordWithTray()) return false;
+  const snap=G.stickers.map(s=>[s.ch,s.slide]);
+  const restoreSnap=()=>G.stickers.forEach((s,i)=>{s.ch=snap[i][0];if(snap[i][1]===undefined)delete s.slide;else s.slide=snap[i][1]});
+  let way=false;
+  if((G.collapses||0)<cfg.freeCollapses){collapseLetters();way=wordWithTray();restoreSnap()}
+  if(!way){                                              /* reshuffle is free: could any arrangement work? */
+    const L=left.map(s=>s.ch);
+    for(let t=0;t<120&&!way;t++){shuffle(L);left.forEach((s,i)=>s.ch=L[i]);way=wordWithTray()}
+    restoreSnap();
+  }
+  return !way;
+}
+function fail(){
+  if(G.done) return;
+  G.done=true;G.failed=true;path=[];paintSel();clearNotice();save();
+  setTimeout(()=>{
+    const F=G.found,left=G.stickers.filter(s=>s.ch).length;
+    $('sheetTitle').textContent=`Level ${G.level} failed`;
+    document.querySelector('#sheet .card').classList.add('fail');
+    $('perf').hidden=true;
+    const m=$('failMsg');m.hidden=false;m.textContent=`No word fits and you can't afford new letters. You get a fresh Level ${G.level}.`;
+    const rows=[[`${F.length} words`,`+${G.earned}`,'pos'],...highlights(),['Letters left',`${left}`],...(G.spent?[['Spent',`−${G.spent}`,'neg']]:[])];
+    $('sheetStats').innerHTML=rows.map((r,i)=>`<div style="--i:${i}"><dt>${r[0]}</dt><dd class="${r[2]||''}">${r[1]}${r[3]?`<small>${r[3]}</small>`:''}</dd></div>`).join('');
+    $('nextBtn').textContent='Try again';
+    $('sheet').hidden=false;hud();$('nextBtn').focus({preventScroll:true});
+  },reduce?0:700);
+}
 function status(){
   if(G.mode==='tutorial'){clearNotice();return}
   if(G.done) return;
+  if(!anyWord()&&isStuck()){
+    if(G.undo&&G.undo.length){setNotice('No moves left','warn',[['Undo',undo,true],['Give up',fail]]);return}
+    fail();return;
+  }
   if(G.note){const nt=G.note;G.note=null;setNotice(nt.msg,nt.tone,nt.actions);return}
   if(!anyWord()){
     const left=G.stickers.filter(s=>s.ch).length,acts=[];
@@ -1075,6 +1143,15 @@ function showPerf(score,clean){
   const t0=performance.now(),dur=750;el.textContent='0';
   (function tick(now){const k=Math.min(1,(now-t0)/dur);el.textContent=Math.round(score*(1-Math.pow(1-k,3)));if(k<1&&!$('sheet').hidden)requestAnimationFrame(tick);else el.textContent=score})(t0);
 }
+function highlights(){
+  const F=G.found,up=w=>w.toUpperCase();
+  const longest=F.reduce((a,f)=>!a||f.w.length>a.w.length||(f.w.length===a.w.length&&f.c>a.c)?f:a,null);
+  const best=F.reduce((a,f)=>!a||f.c>a.c?f:a,null);
+  const hl=[];
+  if(longest&&longest.w.length>=5) hl.push(['Longest word',up(longest.w),'hl',`${longest.w.length} letters`]);
+  if(best&&best!==longest&&best.nf>=2) hl.push(['Best word',up(best.w),'hl',`+${best.c}`]);
+  return hl;
+}
 function complete(cleared){
   if(G.done) return;
   G.done=true;path=[];paintSel();
@@ -1082,13 +1159,9 @@ function complete(cleared){
   const left=G.stickers.filter(s=>s.ch).length, bonus=cfg.levelBonus+(cleared?cfg.clearBonus:0)+(clean?cfg.cleanBonus:0);
   G.coins+=bonus;
   $('sheetTitle').textContent=`Level ${G.level} cleared`;
+  document.querySelector('#sheet .card').classList.remove('fail');$('failMsg').hidden=true;$('nextBtn').textContent='Next level';
   showPerf(G.earned+bonus-G.spent,clean);
-  const F=G.found, up=w=>w.toUpperCase();
-  const longest=F.reduce((a,f)=>!a||f.w.length>a.w.length||(f.w.length===a.w.length&&f.c>a.c)?f:a,null);
-  const best=F.reduce((a,f)=>!a||f.c>a.c?f:a,null);
-  const hl=[];
-  if(longest&&longest.w.length>=5) hl.push(['Longest word',up(longest.w),'hl',`${longest.w.length} letters`]);
-  if(best&&best!==longest&&best.nf>=2) hl.push(['Best word',up(best.w),'hl',`+${best.c}`]);
+  const F=G.found,hl=highlights();
   const rows=[[`${F.length} words`,`+${G.earned}`,'pos'],...hl,['Level bonus',`+${cfg.levelBonus}`,'pos'],['Clear bonus',`+${cfg.clearBonus}`,'pos'],
     ...(clean?[['No-help bonus',`+${cfg.cleanBonus}`,'pos']]:[]),...(G.swept?[['Swept',`${G.swept}`]]:[]),...(G.spent?[['Spent',`−${G.spent}`,'neg']]:[])];
   $('sheetStats').innerHTML=rows.map((r,i)=>`<div style="--i:${i}"><dt>${r[0]}</dt><dd class="${r[2]||''}">${r[1]}${r[3]?`<small>${r[3]}</small>`:''}</dd></div>`).join('');
@@ -1269,7 +1342,7 @@ $('trayReset').onclick=()=>{
   hud();status();save();toast(`New set of ${G.tray.length} letters.`);
 };
 $('collapseBtn').onclick=()=>{if(!held($('collapseBtn')))collapse()};
-$('nextBtn').onclick=()=>{newLevel(G.level+1,G.coins);size();render(true);status();save();introSpin()};
+$('nextBtn').onclick=()=>{newLevel(G.failed?G.level:G.level+1,G.coins);size();render(true);status();save();introSpin()};
 document.addEventListener('keydown',e=>{
   if(e.target.closest&&e.target.closest('input')) return;
   if(e.key==='Escape'){back();return}
@@ -1409,7 +1482,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261026-024948';
+const BUILD='20261026-025609';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
