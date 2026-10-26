@@ -761,7 +761,7 @@ function animate(sel,k,s,dur,after,fromDeg){
   if(!fromDeg){rotEls(els,A,0,0);void cubeEl.offsetWidth;}
   const ms=Math.max(90,Math.round(dur*(1-Math.abs(fromDeg||0)/90)));
   rotEls(els,A,90*s,ms);
-  setTimeout(()=>{moveStickers(sel,k,s);cubeEl.classList.remove('moving');render(true);busy=false;after&&after()},ms+30);
+  setTimeout(()=>{moveStickers(sel,k,s);cubeEl.classList.remove('moving');render();busy=false;after&&after()},ms+30);
 }
 function turnCube(k,s,fromDeg){
   if((busy&&!fromDeg)||G.done) return;
@@ -1064,7 +1064,7 @@ function liveMove(g,cx,cy,span){
     g.live={k,s,ux:dx/l,uy:dy/l,deg:0,els:cubies(()=>true)};busy=true;path=[];paintSel();cubeEl.classList.add('moving');
   }
   const L=g.live,prog=(dx*L.ux+dy*L.uy)/span;
-  if(prog>=1){moveStickers(()=>true,L.k,L.s);cubeEl.classList.remove('moving');render(true);busy=false;g.live=null;g.x=cx;g.y=cy;tutEvent('turn');return}
+  if(prog>=1){moveStickers(()=>true,L.k,L.s);cubeEl.classList.remove('moving');render();busy=false;g.live=null;g.x=cx;g.y=cy;tutEvent('turn');return}
   L.deg=Math.max(-.1,prog)*90*L.s;
   rotEls(L.els,'XYZ'[L.k],L.deg,0);
 }
@@ -1284,7 +1284,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261026-021917';
+const BUILD='20261026-022209';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
