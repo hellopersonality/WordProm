@@ -168,6 +168,8 @@ html.endless #goalClear,html.endless #collapseBtn{display:none}
 .tl{appearance:none;width:34px;height:38px;border-radius:10px;border:0;background:var(--paper);color:var(--ink);display:grid;place-items:center;cursor:grab;font-family:var(--f);font-weight:800;font-size:19px;text-transform:uppercase;touch-action:none;user-select:none;-webkit-user-select:none;transition:transform .15s;flex:1 1 0;max-width:34px;min-width:0;padding:0}
 @media (hover:hover){ .tl:hover{transform:translateY(-3px) rotate(-3deg)} }
 .tl.lifted{opacity:.2}
+.tray-t .tl.picked{transform:translateY(-9px) scale(1.12);box-shadow:0 0 0 3px var(--yellow),0 8px 16px rgba(0,0,0,.45);z-index:1}
+.stage.picking .sticker.drop-ok .tile{animation:spot 1.2s ease-in-out infinite}
 .tl.wild,.ghost.wild{background:var(--ink);color:var(--yellow);box-shadow:inset 0 0 0 3px var(--yellow)}
 .tray-empty{width:34px;height:38px;border-radius:10px;box-shadow:inset 0 0 0 2px #2A2A2A;flex:1 1 0;max-width:34px;min-width:0}
 .ghost{position:fixed;left:0;top:0;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:14px;background:var(--paper);color:var(--ink);display:grid;place-items:center;font:800 26px/1 var(--f);text-transform:uppercase;pointer-events:none;z-index:30;box-shadow:0 14px 28px rgba(0,0,0,.45)}
@@ -554,6 +556,7 @@ function newLevel(level,coins,mode){
     if(!words){words=[];cells.forEach(c=>{if(!c.ch)c.ch=pick(BAG)})}
     words.forEach(w=>usedW.add(w.word));solution.push(...words);
   }
+  if(typeof picked!=='undefined') picked=null;
   G={mode,level,coins,stickers:st,found:[],lettersAdded:0,done:false,earned:0,spent:0,note:null,tray:makeTray(),solution,_deal:true,undo:[]};
   path=[];
   $('sheet').hidden=true;
@@ -591,7 +594,7 @@ function render(fresh){
     for(const fk of Object.keys(FT)){
       const f=document.createElement('div');f.style.transform=FT[fk];
       const s=map[key(p)+'|'+fk];
-      if(s){f.className='face sticker h-'+s.hue+(s.ch?'':' empty')+(fresh?' fresh':'');f.dataset.id=s.id;if(T&&T.dropId===s.id)f.classList.add('coach-spot');
+      if(s){f.className='face sticker h-'+s.hue+(s.ch?'':' empty')+(fresh?' fresh':'');f.dataset.id=s.id;if(T&&T.dropId===s.id)f.classList.add('coach-spot');if(picked!=null&&canTake(s))f.classList.add('drop-ok');
         {const q=[0,1,2].map(i=>p[i]+s.n[i]*.5);f.style.setProperty('--ph',`${-(clock+(q[0]-q[1]+q[2])*.32+9).toFixed(3)}s`)}
         const t=document.createElement('div');t.className='tile'+(s.ch==='?'?' wild':'');if(s.ch){const c=document.createElement('span');c.className='ch';c.textContent=s.ch;if(s.spin){c.style.transition='none';c.style.transform=`rotate(${s.spin}deg)`;spun.push(c)}t.appendChild(c)}if(s.born!==undefined){f.classList.add('born');f.style.setProperty('--b',s.born)}if(s.slide){t.style.transition='none';t.style.transform=`translate3d(${s.slide[0]*S}px,${s.slide[1]*S}px,${S*.04}px)`;slid.push(t)}f.appendChild(t);elById[s.id]=f;}
       else f.className='face';
@@ -648,7 +651,7 @@ function hud(){
   if(!G.tray) G.tray=makeTray();
   const deal=G._deal;G._deal=false;const mid=(G.tray.length-1)/2;
   const glow=T&&T.step.wait==='place';
-  $('tray').innerHTML=G.tray.map((c,i)=>`<button class="tl${c==='?'?' wild':''}${deal?' deal':''}${glow?' coach-target':''}" style="--o:${(i-mid).toFixed(2)};--i:${i}" data-i="${i}" aria-label="${c==='?'?'Wildcard, any letter':'Letter '+c.toUpperCase()}">${c}</button>`).join('')+
+  $('tray').innerHTML=G.tray.map((c,i)=>`<button class="tl${c==='?'?' wild':''}${deal?' deal':''}${glow?' coach-target':''}${picked===i?' picked':''}" style="--o:${(i-mid).toFixed(2)};--i:${i}" data-i="${i}" aria-label="${c==='?'?'Wildcard, any letter':'Letter '+c.toUpperCase()}">${c}</button>`).join('')+
     Array.from({length:Math.max(0,cfg.traySize-G.tray.length)},()=>'<span class="tray-empty"></span>').join('');
   $('found').innerHTML=made?G.found.map(f=>`<span class="w${f.nf>1?' cross':''}">${f.w}<b>+${f.c}</b></span>`).join(''):'<span class="none">No words yet</span>';
   lastHud={level:G.level,made,left};
@@ -928,7 +931,7 @@ function undo(){
   const rec=G.undo&&G.undo[G.undo.length-1];if(!rec) return;
   const cost=cfg.undoCost||0;
   if(cost&&G.coins<cost){toast(`Undo costs ${cost} coins.`);return}
-  G.undo.pop();path=[];
+  G.undo.pop();path=[];picked=null;clearDrop();
   if(cost){G.coins-=cost;G.spent+=cost}
   if(rec.t==='w'){
     rec.cells.forEach(([id,ch],i)=>{const s=G.stickers[id];s.ch=ch;s.born=i});
@@ -1050,6 +1053,7 @@ const byId=id=>G.stickers[id];
 stage.addEventListener('pointerdown',e=>{
   if(!playing||busy||G.done||e.button>0) return;
   $('foundPanel').hidden=true;
+  if(picked!=null){e.preventDefault();const t=stickerAt(e.clientX,e.clientY),st=t&&byId(+t.dataset.id);if(st&&canTake(st))placeLetter(picked,st);else setPick(null);return}
   try{stage.setPointerCapture(e.pointerId)}catch(_){}
   const t=stickerAt(e.clientX,e.clientY), st=t&&byId(+t.dataset.id);
   gesture={x:e.clientX,y:e.clientY,st,fired:false,kind:st&&st.ch?'trace':'turn'};
@@ -1130,51 +1134,61 @@ stage.addEventListener('pointerup',endGesture);
 stage.addEventListener('pointercancel',endGesture);
 
 
-/* ---------- letter tray ---------- */
-let drag=null;
+/* ---------- letter tray ----------
+   Tap a tray letter to pick it up: the squares it can go on light up, and tapping one places it.
+   Tapping anywhere else puts it back. Dragging a letter straight onto a square still works too. */
+let drag=null, picked=null;
 const tray=$('tray');
-function clearDrop(){for(const id in elById)elById[id].classList.remove('drop-ok','drop-hover')}
+const canTake=s=>(!s.ch||isEndless())&&(!T||T.dropId===s.id);
+function clearDrop(){for(const id in elById)elById[id].classList.remove('drop-ok','drop-hover');stage.classList.remove('picking')}
+function showSpots(){G.stickers.forEach(s=>{if(canTake(s)&&elById[s.id])elById[s.id].classList.add('drop-ok')})}
+function setPick(i){picked=i;clearDrop();if(i!=null){showSpots();stage.classList.add('picking');path=[];paintSel()}hud()}
+function placeLetter(i,st){
+  const ch=G.tray[i];picked=null;clearDrop();
+  const swap=!!st.ch;pushUndo({t:'p',id:st.id,old:st.ch,ch,i});st.ch=ch;st.born=0;G.lettersAdded++;G.tray.splice(i,1);
+  render();tutEvent('place');preview(ch,'ok',swap?(G.tray.length?`swapped · ${G.tray.length} left`:'swapped · tray empty'):G.tray.length?`placed · ${G.tray.length} left`:'placed · tray empty');status();save();
+}
 tray.addEventListener('pointerdown',e=>{
   const b=e.target.closest('.tl');if(!b||!playing||busy||G.done||e.button>0) return;
   if(T&&T.step.wait!=='place') return;
   e.preventDefault();
-  const i=+b.dataset.i, gh=document.createElement('div');gh.className='ghost'+(G.tray[i]==='?'?' wild':'');gh.textContent=G.tray[i];document.body.appendChild(gh);
-  const lift=e.pointerType==='touch'?-74:0;
-  gh.style.transform=`translate(${e.clientX}px,${e.clientY+lift}px) rotate(-6deg)`;
-  b.classList.add('lifted');
   try{tray.setPointerCapture(e.pointerId)}catch(_){}
-  G.stickers.forEach(s=>{if((!s.ch||isEndless())&&(!T||T.dropId===s.id)&&elById[s.id])elById[s.id].classList.add('drop-ok')});
-  path=[];paintSel();
-  drag={i,gh,b,over:null,lift};
+  drag={i:+b.dataset.i,b,x:e.clientX,y:e.clientY,moved:false,over:null,lift:e.pointerType==='touch'?-74:0};
 });
 tray.addEventListener('pointermove',e=>{
   if(!drag) return;
+  if(!drag.moved){
+    if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)<8) return;
+    /* it's a drag: lift a ghost copy and light up where it can go */
+    drag.moved=true;picked=null;
+    const gh=document.createElement('div');gh.className='ghost'+(G.tray[drag.i]==='?'?' wild':'');gh.textContent=G.tray[drag.i];document.body.appendChild(gh);drag.gh=gh;
+    hud();const b=tray.querySelector(`.tl[data-i="${drag.i}"]`);if(b){b.classList.add('lifted');drag.b=b}
+    clearDrop();showSpots();path=[];paintSel();
+  }
   drag.gh.style.transform=`translate(${e.clientX}px,${e.clientY+drag.lift}px) rotate(-6deg)`;
   if(!reduce){const vx=e.clientX-(drag.lx??e.clientX);drag.lx=e.clientX;drag.gh.style.rotate=`${Math.max(-22,Math.min(22,vx*2.2)).toFixed(1)}deg`;
-    clearTimeout(drag.rt);drag.rt=setTimeout(()=>{if(drag)drag.gh.style.rotate='0deg'},70)}
+    clearTimeout(drag.rt);drag.rt=setTimeout(()=>{if(drag&&drag.gh)drag.gh.style.rotate='0deg'},70)}
   const t=stickerAt(e.clientX,e.clientY), st=t&&byId(+t.dataset.id);
-  const ok=st&&(!st.ch||isEndless())&&(!T||T.dropId===st.id)?st:null;
+  const ok=st&&canTake(st)?st:null;
   if(ok!==drag.over){if(drag.over&&elById[drag.over.id])elById[drag.over.id].classList.remove('drop-hover');drag.over=ok;if(ok)elById[ok.id].classList.add('drop-hover');drag.gh.style.scale=ok?'1.15':'1'}
 });
 function endDrag(e){
   if(!drag) return;
-  const d=drag;drag=null;d.gh.remove();d.b.classList.remove('lifted');clearDrop();
-  if(e.type==='pointercancel') return;
-  if(d.over){
-    const ch=G.tray[d.i];
-    const swap=!!d.over.ch;pushUndo({t:'p',id:d.over.id,old:d.over.ch,ch,i:d.i});d.over.ch=ch;d.over.born=0;G.lettersAdded++;G.tray.splice(d.i,1);
-    render();tutEvent('place');preview(ch,'ok',swap?(G.tray.length?`swapped · ${G.tray.length} left`:'swapped · tray empty'):G.tray.length?`placed · ${G.tray.length} left`:'placed · tray empty');status();save();
-  } else {
-    const t=stickerAt(e.clientX,e.clientY);
-    if(t) toast(isEndless()?'Drop the letter on a square to swap it in.':'Drop the letter on an empty square.');
-  }
+  const d=drag;drag=null;
+  if(!d.moved){if(e.type!=='pointercancel')setPick(picked===d.i?null:d.i);return}
+  d.gh.remove();if(d.b)d.b.classList.remove('lifted');clearDrop();
+  if(e.type==='pointercancel'){hud();return}
+  if(d.over) placeLetter(d.i,d.over);
+  else{hud();const t=stickerAt(e.clientX,e.clientY);if(t) toast(isEndless()?'Drop the letter on a square to swap it in.':'Drop the letter on an empty square.')}
 }
+/* a tap anywhere off the tray and cube puts a picked-up letter back */
+document.addEventListener('pointerdown',e=>{if(picked==null||!e.target.closest)return;if(e.target.closest('#tray')||e.target.closest('#stage'))return;setPick(null)},true);
 tray.addEventListener('pointerup',endDrag);
 $('trayReset').onclick=()=>{
   if(held($('trayReset'))) return;
   if(busy||G.done||drag||T) return;
   if(G.coins<cfg.trayResetCost){toast(`New letters cost ${cfg.trayResetCost} coins. Make words to earn more.`);return}
-  G.coins-=cfg.trayResetCost;G.spent+=cfg.trayResetCost;G.trayResets=(G.trayResets||0)+1;G.tray=makeTray();G._deal=true;clearUndo();
+  G.coins-=cfg.trayResetCost;G.spent+=cfg.trayResetCost;G.trayResets=(G.trayResets||0)+1;G.tray=makeTray();G._deal=true;clearUndo();picked=null;clearDrop();
   hud();status();save();toast(`New set of ${G.tray.length} letters.`);
 };
 tray.addEventListener('pointercancel',endDrag);
@@ -1236,7 +1250,7 @@ const TUT=[
   {text:'Trace across the letters to spell <b>CAT</b>.',lay:[['front',-1,0,'c'],['front',0,0,'a'],['front',1,0,'t']],target:'cat',hint:'trace'},
   {text:'Words can go diagonally and wrap over an edge. Spell <b>SUN</b>.',lay:[['front',0,0,'s'],['front',1,-1,'u'],['right',-1,-1,'n']],target:'sun',hint:'trace'},
   {text:'Use the <b>turn pad</b> to turn the cube and see another side. Tap an arrow or drag it.',lay:[],wait:'turn',el:'pad'},
-  {text:'Drag the <b>G</b> from the tray onto the empty square.',lay:[['front',-1,0,'d'],['front',0,0,'o']],drop:['front',1,0],tray:['g'],wait:'place'},
+  {text:'Tap the <b>G</b> in the tray, then tap the glowing square.',lay:[['front',-1,0,'d'],['front',0,0,'o']],drop:['front',1,0],tray:['g'],wait:'place'},
   {text:'Now spell <b>DOG</b>.',target:'dog',hint:'trace'},
   {text:'Made a mistake? Tap <b>undo</b> to take the last move back.',wait:'undo',el:'undoBtn'},
   {text:'Letters cut off from the rest can\'t be used. Tap <b>Collapse</b> to pull them together.',lay:[['front',-1,-1,'h'],['front',1,1,'i'],['right',1,1,'p']],wait:'collapse',el:'collapseBtn'},
@@ -1314,7 +1328,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261026-004501';
+const BUILD='20261026-010522';
 let updateDismissed=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
@@ -1389,6 +1403,7 @@ function openPause(){if(!playing||(G&&G.done))return;$('pNewRun').hidden=!isEndl
 function resume(){$('pause').hidden=true}
 /* Escape closes whatever is on top, one layer at a time; during play it opens the pause menu */
 function back(){
+  if(picked!=null){setPick(null);return}
   if(!$('info').hidden){$('info').hidden=true;return}
   if(!$('pause').hidden){resume();return}
   if(!$('foundPanel').hidden){$('foundPanel').hidden=true;return}
