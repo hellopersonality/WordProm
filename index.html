@@ -765,6 +765,34 @@ const SFX=(()=>{
   };
 })();
 
+/* ---------- haptics ----------
+   Android and most mobile browsers expose the Vibration API. iOS Safari does not, but a hidden switch
+   input gives a light tick when it is toggled from a tap, so that is used there. Light taps only. */
+const HAP=(()=>{
+  let on=true;try{on=localStorage.getItem('twistword-haptics')!=='0'}catch(e){}
+  const api=typeof navigator.vibrate==='function', ios=!api&&/iP(hone|ad|od)/.test(navigator.userAgent)&&typeof CSS!=='undefined'&&CSS.supports&&CSS.supports('-webkit-touch-callout','none');
+  let sw=null;
+  function tick(){
+    if(!sw){sw=document.createElement('label');sw.setAttribute('aria-hidden','true');sw.style.cssText='position:fixed;left:-99px;top:0;width:1px;height:1px;opacity:0;pointer-events:none';
+      const i=document.createElement('input');i.type='checkbox';i.setAttribute('switch','');i.tabIndex=-1;sw.appendChild(i);document.body.appendChild(sw)}
+    sw.click();
+  }
+  function buzz(pat){
+    if(!on) return;
+    if(api){try{navigator.vibrate(pat)}catch(e){}return}
+    if(ios){const a=[].concat(pat);let t=0;a.forEach((d,i)=>{if(i%2===0) setTimeout(tick,t);t+=d})}
+  }
+  return {
+    get supported(){return api||ios},
+    get on(){return on},
+    set(v){on=!!v;try{localStorage.setItem('twistword-haptics',on?'1':'0')}catch(e){}if(on) buzz(12)},
+    word(len){buzz(len>=6?[14,40,14]:len>=4?12:8)},
+    face(){buzz([16,50,16,50,26])},
+    win(){buzz([18,60,18,60,34])},
+    lose(){buzz([40,70,40])}
+  };
+})();
+
 /* ---------- juice: sparkles, drifting tiles, hints ----------
    Everything here is decoration that stays out of the cube's way: transform and opacity only, switched
    off by Reduce motion, and paused with the tab. */
@@ -912,7 +940,7 @@ function fail(){
     const m=$('failMsg');m.hidden=false;m.textContent=`No word fits and you can't afford new letters. You get a fresh Level ${G.level}.`;
     const nfc=G.facesPaid||0,rows=[[`${F.length} words`,`+${G.earned}`,'pos'],...(G.faceBonus?[[`${nfc} face${nfc===1?'':'s'} cleared`,`+${G.faceBonus}`,'pos']]:[]),...highlights(),['Letters left',`${left}`],...(G.spent?[['Spent',`−${G.spent}`,'neg']]:[])];
     $('sheetStats').innerHTML=rows.map((r,i)=>`<div style="--i:${i}"><dt>${r[0]}</dt><dd class="${r[2]||''}">${r[1]}${r[3]?`<small>${r[3]}</small>`:''}</dd></div>`).join('');
-    $('nextBtn').textContent='Try again';SFX.lose();
+    $('nextBtn').textContent='Try again';SFX.lose();HAP.lose();
     $('sheet').hidden=false;hud();$('nextBtn').focus({preventScroll:true});
   },reduce?0:700);
 }
@@ -1177,7 +1205,7 @@ function accept(word,used){
   preview(word,'ok',[nf>1?`${nf} faces`:'',nNew?`face cleared${fb?` +${fb}`:''}`:''].filter(Boolean).join(' · '));
   if(word.length>=6||nNew){const cx=pts.reduce((a,q)=>a+q[0],0)/pts.length,cy=pts.reduce((a,q)=>a+q[1],0)/pts.length;for(let k=0;k<(nNew?5:3);k++) setTimeout(()=>sparkle(cx+(Math.random()-.5)*110,cy+(Math.random()-.5)*80,12+Math.random()*12),k*90)}
   if(nNew) driftBurst(10);else if(word.length>=7) driftBurst(6);
-  SFX.word(word.length,nf);if(nNew) setTimeout(()=>SFX.face(),reduce?0:260);
+  SFX.word(word.length,nf);HAP.word(word.length);if(nNew) setTimeout(()=>{SFX.face();HAP.face()},reduce?0:260);
   ripple(word.length);
   if(!reduce){stage.style.setProperty('--k',Math.min(4,word.length-2));stage.classList.remove('thump');void stage.offsetWidth;stage.classList.add('thump');setTimeout(()=>stage.classList.remove('thump'),340)}
   spawnCoins(pts,c+fb);
@@ -1305,7 +1333,7 @@ function complete(cleared){
   G.coins+=bonus;
   $('sheetTitle').textContent=`Level ${G.level} cleared`;
   document.querySelector('#sheet .card').classList.remove('fail');$('failMsg').hidden=true;$('nextBtn').textContent='Next level';
-  showPerf(G.earned+(G.faceBonus||0)+bonus-G.spent,clean);SFX.win();
+  showPerf(G.earned+(G.faceBonus||0)+bonus-G.spent,clean);SFX.win();HAP.win();
   const F=G.found,hl=highlights();
   const nfc=G.facesPaid||0;
   const rows=[[`${F.length} words`,`+${G.earned}`,'pos'],...(G.faceBonus?[[`${nfc} face${nfc===1?'':'s'} cleared`,`+${G.faceBonus}`,'pos']]:[]),...hl,['Level bonus',`+${cfg.levelBonus}`,'pos'],['Clear bonus',`+${cfg.clearBonus}`,'pos'],
@@ -1503,11 +1531,12 @@ function buildTune(){
   const box=$('tune');
   /* the economy controls are for tuning only: add ?tune to the address to show them */
   const DEV=/[?&]tune\b/.test(location.search);
-  box.innerHTML=`<label class="toggle" for="calmBox">Reduce motion<input type="checkbox" id="calmBox"${reduce?' checked':''}></label><label class="toggle" for="sndBox">Sound<input type="checkbox" id="sndBox"${SFX.on?' checked':''}></label><label class="toggle vol" for="volBox">Volume<input type="range" id="volBox" min="0" max="100" step="5" value="${Math.round(SFX.vol*100)}"${SFX.on?'':' disabled'}></label>`+
+  box.innerHTML=`<label class="toggle" for="calmBox">Reduce motion<input type="checkbox" id="calmBox"${reduce?' checked':''}></label><label class="toggle" for="sndBox">Sound<input type="checkbox" id="sndBox"${SFX.on?' checked':''}></label>${HAP.supported?`<label class="toggle" for="hapBox">Vibration<input type="checkbox" id="hapBox"${HAP.on?' checked':''}></label>`:''}<label class="toggle vol" for="volBox">Volume<input type="range" id="volBox" min="0" max="100" step="5" value="${Math.round(SFX.vol*100)}"${SFX.on?'':' disabled'}></label>`+
    (DEV?`<p>Economy changes apply when you restart the level.</p>`+CFG_META.map(([k,l,mn,mx])=>`<label for="cfg-${k}">${l}<input type="number" id="cfg-${k}" min="${mn}" max="${mx}" value="${cfg[k]}"></label>`).join('')+
    '<div class="row"><button class="btn primary" id="applyCfg">Apply and restart level</button><button class="btn" id="resetCfg">Defaults</button><button class="btn" id="resetAll">Reset progress</button></div>':'')+
    '<p class="credits">Word lists: ENABLE, and 12dicts by Alan Beale, both public domain. Font: Figtree, SIL Open Font License.</p>';
   $('sndBox').onchange=e=>{SFX.set(e.target.checked);$('volBox').disabled=!e.target.checked};
+  if($('hapBox')) $('hapBox').onchange=e=>HAP.set(e.target.checked);
   $('volBox').oninput=e=>SFX.setVol(e.target.value/100);
   $('volBox').onchange=()=>SFX.blip();
   $('calmBox').onchange=e=>{setCalm(e.target.checked);toast(e.target.checked?'Motion reduced.':'Full motion on.')};
@@ -1636,7 +1665,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261026-033729';
+const BUILD='20261026-033840';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
