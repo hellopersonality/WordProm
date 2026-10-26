@@ -33,7 +33,7 @@
   --f:'Figtree',ui-rounded,'SF Pro Rounded',system-ui,sans-serif;
   --r-mod:22px; --r-t:16px;
   --s:80px; --h:40px; --side:400px;
-  --check-a:rgba(34,35,38,.34); --check-b:rgba(46,47,52,.34); --check:64px;
+  --check-a:#27282B; --check-b:#2D2E32; --check:64px;
 }
 html,body{height:100%;overflow:hidden}
 [hidden]{display:none!important}
@@ -338,6 +338,7 @@ html.calm .bg{animation-duration:10s!important}
 html.calm .btn.primary::after,html.calm #tContinue::after,html.calm #tNew::after,html.calm .tool.ready::after,html.calm .drift,html.calm .sp,html.calm .bst{display:none!important}
 .swirl{position:absolute;left:0;top:0;width:100%;height:100%;z-index:-2;pointer-events:none;image-rendering:pixelated;image-rendering:crisp-edges;background:var(--ground)}
 .swirl.fixed{position:fixed}
+html.gl .bg{background:none;animation:none}
 </style>
 </head>
 <body>
@@ -813,9 +814,10 @@ const HAP=(()=>{
 })();
 
 /* ---------- background swirl ----------
-   A slow, warped-paint colour field in the spirit of a card-game table: it renders at a very low
-   resolution and is scaled up with hard pixels, so it costs almost nothing and reads as chunky pixel
-   art. The checkerboard sits over it, half see-through. Reduce motion draws one still frame. */
+   A slow, warped-paint field in the spirit of a card-game table, in greys. The old checkerboard is
+   drawn inside it, so the squares bend and drift with the swirl. It renders at a very low resolution
+   and is scaled up with hard pixels, so it costs almost nothing. Reduce motion draws one still frame.
+   If WebGL is missing, the plain CSS checkerboard shows instead. */
 const SWIRL=(()=>{
   const FS=`precision mediump float;uniform vec2 R;uniform float T;
   void main(){
@@ -823,23 +825,26 @@ const SWIRL=(()=>{
     float len=length(uv);
     float ang=atan(uv.y,uv.x)-.55-5.*(.3*len+.7)+T*.05;
     vec2 mid=(R/length(R))*.5;
-    uv=vec2(len*cos(ang)+mid.x,len*sin(ang)+mid.y)-mid;
-    uv*=15.;
-    vec2 uv2=vec2(uv.x+uv.y);
+    vec2 w=vec2(len*cos(ang)+mid.x,len*sin(ang)+mid.y)-mid;      /* the swirled plane */
+    /* the checkerboard, drawn in that plane so its squares bend and drift with the swirl */
+    vec2 q=w*6.+vec2(T*.10,T*.10);
+    q+=.3*vec2(sin(q.y*1.2+T*.30),cos(q.x*1.1-T*.25));
+    float ch=mod(floor(q.x)+floor(q.y),2.);
+    /* warped paint bands, used only for light and dark */
+    vec2 uv1=w*9.;
+    vec2 uv2=vec2(uv1.x+uv1.y);
     for(int i=0;i<5;i++){
-      uv2+=sin(max(uv.x,uv.y))+uv;
-      uv+=.5*vec2(cos(5.11+.353*uv2.y+T*.13),sin(uv2.x-.113*T));
-      uv-=cos(uv.x+uv.y)-sin(uv.x*.711-uv.y);
+      uv2+=sin(max(uv1.x,uv1.y))+uv1;
+      uv1+=.5*vec2(cos(5.11+.353*uv2.y+T*.13),sin(uv2.x-.113*T));
+      uv1-=cos(uv1.x+uv1.y)-sin(uv1.x*.711-uv1.y);
     }
-    float k=.93;
-    float paint=min(2.,max(0.,length(uv)*.035*k*2.));
-    float a=max(0.,1.-k*2.*abs(1.-paint));
-    float b=max(0.,1.-k*2.*abs(paint));
-    float c=1.-min(1.,a+b);
-    vec3 warm=vec3(.66,.21,.12), cool=vec3(.08,.27,.60), base=vec3(.09,.09,.10);
-    vec3 col=base*c+warm*a+cool*b;
-    col+=.10*(max(a*5.-4.,0.)+max(b*5.-4.,0.));
-    gl_FragColor=vec4(col*.62,1.);
+    float k=1.86;
+    float paint=min(2.,max(0.,length(uv1)*.035*k));
+    float a=max(0.,1.-k*abs(1.-paint));
+    float b=max(0.,1.-k*abs(paint));
+    float tone=.115+ch*.075+.05*a-.035*b+.02*max(a*5.-4.,0.);
+    tone=clamp(tone,.06,.30);
+    gl_FragColor=vec4(vec3(tone*1.02,tone,tone*1.06),1.);
   }`;
   const VS='attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
   const items=[];let raf=0,last=0,t=0,boost=0;
@@ -854,7 +859,7 @@ const SWIRL=(()=>{
     const buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
     const loc=gl.getAttribLocation(pr,'p');gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
     const uR=gl.getUniformLocation(pr,'R'),uT=gl.getUniformLocation(pr,'T');
-    host.prepend(cv);
+    host.prepend(cv);document.documentElement.classList.add('gl');
     const it={cv,active,draw(){
       const px=6,w=Math.max(16,Math.ceil(innerWidth/px)),h=Math.max(16,Math.ceil(innerHeight/px));
       if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;gl.viewport(0,0,w,h)}
@@ -1739,7 +1744,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261026-061422';
+const BUILD='20261026-061718';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
