@@ -1638,7 +1638,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261026-033342';
+const BUILD='20261026-033705';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
