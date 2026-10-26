@@ -28,7 +28,10 @@ window.__bench=(lv,skill)=>{
   let earned=0,spent=0,swept=0,coll=0,reshuf=0;const tray=G.tray.slice();
   const filled=()=>G.stickers.filter(s=>s.ch);
   const val=w=>{const nf=facesIn(w.path);return w.w.length*cfg.coinsPerLetter+(w.w.length>=6?cfg.longBonus:0)+(nf-1)*cfg.crossBonus};
-  const take=w=>{earned+=val(w);G.found.push({w:w.w});w.path.forEach(s=>s.ch=null)};
+  const doneF=new Set();
+  const take=w=>{earned+=val(w);G.found.push({w:w.w});
+    new Set(w.path.map(s=>key(s.n))).forEach(fk=>{if(!doneF.has(fk)&&G.stickers.every(s=>key(s.n)!==fk||!s.ch||w.path.includes(s))){doneF.add(fk);earned+=cfg.faceBonus}});
+    w.path.forEach(s=>s.ch=null)};
   const choose=ws=>{
     if(skill==='casual') return ws[rnd(ws.length)];
     if(skill==='average'){const wt=ws.map(w=>Math.pow(w.w.length,1.5));let r=Math.random()*wt.reduce((a,b)=>a+b,0);for(let i=0;i<ws.length;i++){r-=wt[i];if(r<=0)return ws[i]}return ws[ws.length-1]}

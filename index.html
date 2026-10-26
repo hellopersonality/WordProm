@@ -170,6 +170,8 @@ html.endless #goalClear,html.endless #collapseBtn{display:none}
 }
 .stats div{display:flex;justify-content:space-between;gap:12px;font-size:14px;font-weight:600;animation:deal .4s cubic-bezier(.2,1.5,.4,1) both;animation-delay:calc(var(--i) * 60ms + .25s)}
 .stats dt{color:var(--fog)} .stats dd{margin:0}
+.sticker.fclr .tile{animation:fclr .8s ease-out both;animation-delay:calc(var(--fi,0)*45ms)}
+@keyframes fclr{0%{background:#FFD60A;box-shadow:0 0 0 calc(var(--s)*.07) #FFD60A99}60%{box-shadow:0 0 0 calc(var(--s)*.02) #FFD60A33}}
 .card.fail .ttl{background:var(--red)}
 .failmsg{margin:0;padding:2px 8px 6px;font-size:15px;font-weight:600;line-height:1.3;color:var(--paper)}
 .stats .hl{color:var(--paper);font-weight:800;letter-spacing:.06em}.stats .hl small{color:var(--fog);font-weight:600;letter-spacing:0;margin-left:8px;font-size:12px}
@@ -443,6 +445,7 @@ const CFG_META=[
   ['levelBonus','Level bonus',0,500],
   ['clearBonus','Cube clear bonus',0,1000],
   ['cleanBonus','Extra for a clear with no sweeps',0,1000],
+  ['faceBonus','Bonus for emptying a whole face',0,200],
   ['traySize','Free tray letters per level',0,10],
   ['trayResetCost','Cost to get new tray letters',0,500],
   ['sweepMax','Sweep allowed at or below this many letters',0,54],
@@ -452,7 +455,7 @@ const CFG_META=[
   ['startCoins','Starting coins',0,5000],
   ['undoCost','Undo cost',0,500]
 ];
-const DEFAULT_CFG={minLen:2,coinsPerLetter:2,longBonus:5,crossBonus:4,levelBonus:25,clearBonus:100,cleanBonus:100,traySize:5,trayResetCost:50,freeCollapses:1,collapseCost:60,sweepMax:8,sweepCost:15,startCoins:0,undoCost:0};
+const DEFAULT_CFG={minLen:2,coinsPerLetter:2,longBonus:5,crossBonus:4,levelBonus:25,clearBonus:100,cleanBonus:100,faceBonus:10,traySize:5,trayResetCost:50,freeCollapses:1,collapseCost:60,sweepMax:8,sweepCost:15,startCoins:0,undoCost:0};
 
 /* ---------- dictionary ---------- */
 const DICT=new Set(), PREF=new Set();
@@ -690,6 +693,50 @@ function setCoins(v){
   (function step(now){if(id!==coinTween)return;const k=dur?Math.min(1,(now-t0)/dur):1;shown=Math.round(from+d*(1-Math.pow(1-k,3)));drawCoins();if(k<1)requestAnimationFrame(step)})(t0);
 }
 /* coins burst from where they were earned and arc into the counter, each one ticking it up */
+/* ---------- sound ----------
+   Everything is synthesised with Web Audio (no files). Words climb a pentatonic scale while the player
+   keeps chaining them, so any run of words sounds musical. Off with the Sound toggle in Settings. */
+const SFX=(()=>{
+  let ctx=null,master=null,on=true,chain=0,lastWord=0,lastCoin=0,coinStep=0;
+  try{on=localStorage.getItem('twistword-sound')!=='0'}catch(e){}
+  const PENT=[0,2,4,7,9], hz=(base,deg)=>base*Math.pow(2,(PENT[deg%5]+12*Math.floor(deg/5))/12);
+  function ac(){
+    if(!on) return null;
+    if(!ctx){try{ctx=new (window.AudioContext||window.webkitAudioContext)();master=ctx.createGain();master.gain.value=.7;
+      const comp=ctx.createDynamicsCompressor();master.connect(comp);comp.connect(ctx.destination)}catch(e){on=false;return null}}
+    if(ctx.state==='suspended') ctx.resume();
+    return ctx;
+  }
+  function tone(f,d,o){
+    o=o||{};const c=ac();if(!c) return;
+    const t0=c.currentTime+(o.at||0),osc=c.createOscillator(),g=c.createGain(),v=o.vol==null?.12:o.vol;
+    osc.type=o.type||'sine';osc.frequency.setValueAtTime(f,t0);
+    if(o.slide) osc.frequency.exponentialRampToValueAtTime(f*o.slide,t0+d);
+    g.gain.setValueAtTime(.0001,t0);g.gain.exponentialRampToValueAtTime(v,t0+.012);g.gain.exponentialRampToValueAtTime(.0001,t0+d);
+    osc.connect(g);g.connect(master);osc.start(t0);osc.stop(t0+d+.04);
+  }
+  return {
+    get on(){return on},
+    set(v){on=!!v;try{localStorage.setItem('twistword-sound',on?'1':'0')}catch(e){}if(on){ac();tone(hz(523,2),.12,{type:'triangle',vol:.1})}},
+    tick(n){tone(hz(330,Math.min(n-1,9)),.06,{type:'triangle',vol:.04})},
+    word(len,faces){
+      const now=performance.now();chain=now-lastWord<8000?Math.min(chain+1,9):0;lastWord=now;
+      const n=Math.max(2,Math.min(len-1,5));
+      for(let i=0;i<n;i++) tone(hz(262,chain+i),i===n-1?.34:.16,{type:'triangle',vol:.13,at:i*.058});
+      if(len>=6) tone(hz(262,chain)*1.5,.5,{type:'sine',vol:.05,at:.05});
+      if(faces>1) tone(hz(1047,chain),.28,{type:'sine',vol:.05,at:n*.058});
+    },
+    bad(){tone(150,.16,{type:'sawtooth',vol:.05,slide:.7})},
+    coin(){
+      const now=performance.now();if(now-lastCoin<45) return;
+      coinStep=now-lastCoin>260?0:Math.min(coinStep+1,8);lastCoin=now;
+      tone(hz(784,coinStep),.09,{type:'sine',vol:.045});
+    },
+    face(){[523.25,659.25,783.99,1046.5].forEach((f,i)=>tone(f,i===3?.55:.2,{type:'triangle',vol:.13,at:i*.07}));tone(2093,.5,{type:'sine',vol:.03,at:.22})},
+    win(){[0,2,4,5,7].forEach((d,i)=>tone(hz(392,d),i===4?.7:.16,{type:'triangle',vol:.13,at:i*.085}));tone(hz(392,9),.9,{type:'sine',vol:.05,at:.4})},
+    lose(){tone(294,.28,{type:'triangle',vol:.1});tone(220,.5,{type:'triangle',vol:.1,at:.22,slide:.85})}
+  };
+})();
 function spawnCoins(points,amount){
   if(!amount) return;
   const tile=$('coinTile'),tr=tile.getBoundingClientRect(),tx=tr.left+18,ty=tr.top+tr.height/2;
@@ -710,7 +757,7 @@ function spawnCoins(points,amount){
       const x=u*u*sx+2*u*e*bx+e*e*tx, y=u*u*sy+2*u*e*by+e*e*ty, sc=k<.15?k/.15:1-.4*e;
       el.style.transform=`translate(${x}px,${y}px) scale(${sc}) rotate(${k*360}deg)`;
       if(k<1){requestAnimationFrame(step);return}
-      el.remove();shown+=share;drawCoins();juice(tile);
+      el.remove();shown+=share;drawCoins();juice(tile);SFX.coin();
       if(--inFlight===0){setCoins(G.coins)}
     })(performance.now());
   }
@@ -784,9 +831,9 @@ function fail(){
     document.querySelector('#sheet .card').classList.add('fail');
     $('perf').hidden=true;
     const m=$('failMsg');m.hidden=false;m.textContent=`No word fits and you can't afford new letters. You get a fresh Level ${G.level}.`;
-    const rows=[[`${F.length} words`,`+${G.earned}`,'pos'],...highlights(),['Letters left',`${left}`],...(G.spent?[['Spent',`−${G.spent}`,'neg']]:[])];
+    const nfc=(G.facesDone||[]).length,rows=[[`${F.length} words`,`+${G.earned}`,'pos'],...(G.faceBonus?[[`${nfc} face${nfc===1?'':'s'} cleared`,`+${G.faceBonus}`,'pos']]:[]),...highlights(),['Letters left',`${left}`],...(G.spent?[['Spent',`−${G.spent}`,'neg']]:[])];
     $('sheetStats').innerHTML=rows.map((r,i)=>`<div style="--i:${i}"><dt>${r[0]}</dt><dd class="${r[2]||''}">${r[1]}${r[3]?`<small>${r[3]}</small>`:''}</dd></div>`).join('');
-    $('nextBtn').textContent='Try again';
+    $('nextBtn').textContent='Try again';SFX.lose();
     $('sheet').hidden=false;hud();$('nextBtn').focus({preventScroll:true});
   },reduce?0:700);
 }
@@ -980,8 +1027,8 @@ function submit(){
   const used=path.slice();path=[];
   if(word.length<cfg.minLen){paintSel();preview('');if(word.length>1)preview(word,'bad',`words need ${cfg.minLen}+ letters`);return}
   if(T&&T.step.target&&word!==T.step.target){paintSel();preview(word,'bad',`try ${T.step.target.toUpperCase()}`);return}
-  if(!DICT.has(word)){paintSel();preview(word,'bad','not in the word list');return}
-  if(G.found.some(f=>f.w===word)){paintSel();preview(word,'bad','already made');return}
+  if(!DICT.has(word)){paintSel();preview(word,'bad','not in the word list');SFX.bad();return}
+  if(G.found.some(f=>f.w===word)){paintSel();preview(word,'bad','already made');SFX.bad();return}
   accept(word,used);
 }
 /* the hidden route: is a full clear still guaranteed from here? */
@@ -1017,7 +1064,7 @@ function undo(){
   if(cost){G.coins-=cost;G.spent+=cost}
   if(rec.t==='w'){
     rec.cells.forEach(([id,ch],i)=>{const s=G.stickers[id];s.ch=ch;s.born=i});
-    G.coins-=rec.c;G.earned-=rec.c;G.found.pop();G.solution=rec.sol;
+    G.coins-=rec.c+(rec.fb||0);G.earned-=rec.c;if(rec.fb){G.faceBonus=(G.faceBonus||0)-rec.fb;G.facesDone=(G.facesDone||[]).filter(f=>!rec.faces.includes(f))}G.found.pop();G.solution=rec.sol;
     preview(rec.w,'bad',`undone · −${rec.c}`);
   } else {
     const s=G.stickers[rec.id];s.ch=rec.old;s.born=0;G.lettersAdded--;G.tray.splice(rec.i,0,rec.ch);
@@ -1031,17 +1078,27 @@ function accept(word,used){
   pushUndo({t:'w',w:word,cells:used.map(s=>[s.id,s.ch]),c:0,sol:JSON.parse(JSON.stringify(G.solution||[]))});
   const nf=facesIn(used);
   const c=word.length*cfg.coinsPerLetter+(word.length>=6?cfg.longBonus:0)+(nf-1)*cfg.crossBonus;
+  /* a face that this word empties for the first time pays a bonus */
+  const faceFx=[];
+  if(G.mode==='classic'){
+    G.facesDone=G.facesDone||[];const usedIds=new Set(used.map(s=>s.id));
+    new Set(used.map(s=>key(s.n))).forEach(fk=>{if(!G.facesDone.includes(fk)&&G.stickers.every(s=>key(s.n)!==fk||!s.ch||usedIds.has(s.id)))faceFx.push(fk)});
+  }
+  const fb=faceFx.length*cfg.faceBonus;
   const pts=used.map(st=>elById[st.id]).filter(Boolean).map(centerOf);
-  G.coins+=c;G.earned+=c;G.found.push({w:word,c,nf});G.undo[G.undo.length-1].c=c;
-  preview(word,'ok',nf>1?`${nf} faces`:'');
+  G.coins+=c+fb;G.earned+=c;G.found.push({w:word,c,nf});G.undo[G.undo.length-1].c=c;
+  if(faceFx.length){G.faceBonus=(G.faceBonus||0)+fb;G.facesDone.push(...faceFx);Object.assign(G.undo[G.undo.length-1],{fb,faces:faceFx})}
+  preview(word,'ok',[nf>1?`${nf} faces`:'',faceFx.length?`face cleared${fb?` +${fb}`:''}`:''].filter(Boolean).join(' · '));
+  SFX.word(word.length,nf);if(faceFx.length) setTimeout(()=>SFX.face(),reduce?0:260);
   ripple(word.length);
   if(!reduce){stage.style.setProperty('--k',Math.min(4,word.length-2));stage.classList.remove('thump');void stage.offsetWidth;stage.classList.add('thump');setTimeout(()=>stage.classList.remove('thump'),340)}
-  spawnCoins(pts,c);
+  spawnCoins(pts,c+fb);
   busy=true;
   used.forEach(s=>elById[s.id]&&elById[s.id].classList.add('pop'));
   paintSel();
-  setTimeout(()=>{if(isEndless())refill(used);else used.forEach(s=>s.ch=null);busy=false;render();progress()},reduce?0:230);
+  setTimeout(()=>{if(isEndless())refill(used);else used.forEach(s=>s.ch=null);busy=false;render();faceFx.forEach(flashFace);progress()},reduce?0:230);
 }
+function flashFace(fk){G.stickers.filter(s=>key(s.n)===fk).forEach((s,i)=>{const el=elById[s.id];if(!el) return;el.style.setProperty('--fi',i);el.classList.add('fclr');setTimeout(()=>el.classList.remove('fclr'),1500)})}
 /* endless: the squares a word leaves are filled straight away with a new hidden word (or words)
    along a fresh path through those same squares, so there is always something to spell there */
 function refill(cells){
@@ -1080,17 +1137,17 @@ function reshuffle(){
    rules, so re-run it after changing the economy or the level generator. */
 /*BENCH:start*/
 const BENCH={
-1:[0,0,2,4,6,10,14,20,31,31,41,47,57,57,58,72,79,91,65,63,58,38,16,2,0,0,1,2,16,23,17,21,24,26,6,1,0,0,0,0],
-2:[0,0,1,4,4,10,15,26,34,32,48,46,50,56,63,69,82,77,63,65,51,39,19,2,0,0,0,3,14,25,20,16,35,23,6,1,0,0,0,0],
-3:[0,0,1,6,8,20,13,27,36,43,48,60,49,65,68,70,80,72,80,54,53,38,15,2,0,0,0,3,8,12,18,8,20,19,5,1,0,0,0,0],
-4:[0,0,2,10,13,17,22,28,39,46,53,57,65,56,66,77,74,61,75,58,54,29,14,1,0,0,1,0,8,14,13,12,16,13,4,1,0,0,0,0],
-5:[0,0,2,8,10,25,28,35,39,47,53,54,55,74,62,78,63,76,73,48,42,32,11,2,1,0,0,3,8,10,11,9,23,11,6,0,0,0,0,0],
-6:[0,1,5,10,14,36,29,33,49,42,56,62,74,65,65,65,71,75,61,47,35,34,8,0,0,0,0,2,6,9,11,9,11,12,3,0,0,0,0,0],
-8:[0,0,5,6,18,31,29,42,47,53,50,59,67,72,69,80,75,66,65,51,34,25,7,1,0,0,0,0,5,7,7,4,9,11,2,0,0,0,0,0],
-10:[0,0,4,12,18,30,30,32,58,50,58,69,64,62,72,79,75,65,64,40,29,25,8,1,0,0,0,2,7,10,5,5,12,10,4,0,0,0,0,0],
-13:[0,1,7,11,17,25,37,39,51,46,71,60,56,77,73,79,72,65,59,43,28,26,6,1,0,0,0,1,6,7,5,5,14,8,3,0,0,0,0,0],
-17:[0,1,5,11,19,27,40,40,49,43,58,65,65,63,79,73,75,67,53,50,36,29,8,0,0,0,0,0,5,7,6,6,12,6,2,0,0,0,0,0],
-25:[0,0,4,17,20,34,33,43,48,48,68,52,65,72,66,71,70,69,55,41,30,29,11,1,0,0,0,3,3,6,8,7,10,14,2,1,0,0,0,0]
+1:[0,0,0,2,2,7,9,12,18,17,22,29,32,37,35,37,51,45,40,62,59,69,67,65,45,42,36,11,2,0,0,0,1,4,13,22,22,17,30,36],
+2:[0,0,1,1,3,3,8,11,17,15,24,28,39,42,37,41,40,45,48,58,62,51,72,75,42,45,40,22,1,0,0,0,1,2,11,20,16,18,30,31],
+3:[0,0,0,2,6,9,8,14,25,24,28,31,36,38,44,40,57,50,58,54,61,56,66,70,37,35,42,9,1,0,0,0,0,4,8,16,13,13,20,24],
+4:[0,0,1,3,6,7,16,20,21,25,33,33,39,42,55,35,46,52,46,55,66,60,69,67,38,33,30,12,1,0,0,0,0,3,9,16,11,11,18,20],
+5:[0,0,1,2,8,8,15,24,24,28,30,30,38,39,49,41,58,58,55,60,55,55,63,62,41,27,37,14,2,0,0,0,1,1,6,15,13,5,14,20],
+6:[0,0,1,4,11,18,19,28,28,28,37,37,45,58,47,49,57,52,57,53,59,55,54,51,29,31,25,11,1,0,0,0,0,2,3,8,11,6,14,12],
+8:[0,0,1,5,10,17,20,28,27,35,40,40,53,48,52,55,54,51,57,53,61,52,51,52,28,28,28,10,2,0,0,0,0,1,3,8,10,5,8,8],
+10:[0,0,1,4,13,13,25,22,25,29,41,43,43,54,54,54,62,50,60,57,56,50,50,48,34,30,25,6,3,0,0,0,0,1,3,10,6,8,11,8],
+13:[0,0,0,8,10,14,21,22,23,29,38,49,46,43,48,50,48,66,62,60,62,58,52,49,31,27,25,8,3,0,0,0,0,2,5,8,7,5,8,12],
+17:[0,0,2,4,11,17,22,29,20,35,41,43,38,45,54,47,53,57,56,58,72,52,57,51,30,25,26,6,1,0,0,0,0,2,5,7,10,9,8,8],
+25:[0,0,2,5,12,16,21,30,25,32,40,41,52,42,52,55,59,50,63,64,57,48,51,49,36,26,21,8,1,0,0,0,0,0,5,7,4,6,9,9]
 };
 /*BENCH:end*/
 const BENCH_LO=100,BENCH_BIN=10;
@@ -1160,9 +1217,10 @@ function complete(cleared){
   G.coins+=bonus;
   $('sheetTitle').textContent=`Level ${G.level} cleared`;
   document.querySelector('#sheet .card').classList.remove('fail');$('failMsg').hidden=true;$('nextBtn').textContent='Next level';
-  showPerf(G.earned+bonus-G.spent,clean);
+  showPerf(G.earned+(G.faceBonus||0)+bonus-G.spent,clean);SFX.win();
   const F=G.found,hl=highlights();
-  const rows=[[`${F.length} words`,`+${G.earned}`,'pos'],...hl,['Level bonus',`+${cfg.levelBonus}`,'pos'],['Clear bonus',`+${cfg.clearBonus}`,'pos'],
+  const nfc=(G.facesDone||[]).length;
+  const rows=[[`${F.length} words`,`+${G.earned}`,'pos'],...(G.faceBonus?[[`${nfc} face${nfc===1?'':'s'} cleared`,`+${G.faceBonus}`,'pos']]:[]),...hl,['Level bonus',`+${cfg.levelBonus}`,'pos'],['Clear bonus',`+${cfg.clearBonus}`,'pos'],
     ...(clean?[['No-help bonus',`+${cfg.cleanBonus}`,'pos']]:[]),...(G.swept?[['Swept',`${G.swept}`]]:[]),...(G.spent?[['Spent',`−${G.spent}`,'neg']]:[])];
   $('sheetStats').innerHTML=rows.map((r,i)=>`<div style="--i:${i}"><dt>${r[0]}</dt><dd class="${r[2]||''}">${r[1]}${r[3]?`<small>${r[3]}</small>`:''}</dd></div>`).join('');
   $('sheet').hidden=false;clearNotice();
@@ -1240,7 +1298,7 @@ stage.addEventListener('pointermove',e=>{
     const st=traceTarget(e.clientX,e.clientY), last=path[path.length-1];
     if(!st||st===last||!st.ch) return;
     if(path.length>1&&st===path[path.length-2]) path.pop();
-    else if(!path.includes(st)&&adj(st,last)) path.push(st);
+    else if(!path.includes(st)&&adj(st,last)){path.push(st);SFX.tick(path.length)}
     else return;
     paintSel();preview(path.map(s=>s.ch).join(''));
     return;
@@ -1355,8 +1413,9 @@ document.addEventListener('keydown',e=>{
 /* ---------- tuning ---------- */
 function buildTune(){
   const box=$('tune');
-  box.innerHTML=`<label class="toggle" for="calmBox">Reduce motion<input type="checkbox" id="calmBox"${reduce?' checked':''}></label><p>Economy changes apply when you restart the level.</p>`+CFG_META.map(([k,l,mn,mx])=>`<label for="cfg-${k}">${l}<input type="number" id="cfg-${k}" min="${mn}" max="${mx}" value="${cfg[k]}"></label>`).join('')+
+  box.innerHTML=`<label class="toggle" for="calmBox">Reduce motion<input type="checkbox" id="calmBox"${reduce?' checked':''}></label><label class="toggle" for="sndBox">Sound<input type="checkbox" id="sndBox"${SFX.on?' checked':''}></label><p>Economy changes apply when you restart the level.</p>`+CFG_META.map(([k,l,mn,mx])=>`<label for="cfg-${k}">${l}<input type="number" id="cfg-${k}" min="${mn}" max="${mx}" value="${cfg[k]}"></label>`).join('')+
    '<div class="row"><button class="btn primary" id="applyCfg">Apply and restart level</button><button class="btn" id="resetCfg">Defaults</button><button class="btn" id="resetAll">Reset progress</button></div><p class="credits">Word lists: ENABLE, and 12dicts by Alan Beale, both public domain. Font: Figtree, SIL Open Font License.</p>';
+  $('sndBox').onchange=e=>SFX.set(e.target.checked);
   $('calmBox').onchange=e=>{setCalm(e.target.checked);toast(e.target.checked?'Motion reduced.':'Full motion on.')};
   $('applyCfg').onclick=()=>{CFG_META.forEach(([k,,mn,mx])=>{const v=parseInt($('cfg-'+k).value,10);cfg[k]=isNaN(v)?DEFAULT_CFG[k]:Math.max(mn,Math.min(mx,v))});buildTune();
     if(G){newLevel(G.level,G.coins);size();render(true);status();save();toast(playing?'Settings applied. Level restarted.':'Settings saved.')}};
@@ -1482,7 +1541,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261026-025609';
+const BUILD='20261026-031745';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
