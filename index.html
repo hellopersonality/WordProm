@@ -350,7 +350,7 @@ html.calm .bg{animation-duration:10s!important}
       <button class="mbtn y" id="tContinue" style="--i:0">Continue <small id="tContinueSub"></small></button>
       <button class="mbtn p" id="tNew" style="--i:1">New game <small id="tNewSub"></small></button>
       <button class="mbtn r" id="tEndless" style="--i:2">Endless <small id="tEndlessSub">letters never run out</small></button>
-      <button class="mbtn s" id="tHow" style="--i:3">How to play</button>
+      <button class="mbtn s" id="tHow" style="--i:3">Tutorial</button>
       <button class="mbtn m" id="tSettings" style="--i:4">Settings</button>
     </div>
   </div>
@@ -1326,7 +1326,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261026-011943';
+const BUILD='20261026-012119';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
