@@ -319,11 +319,11 @@ html.calm .bg{animation-duration:10s!important}
 @keyframes shine{0%,78%{transform:translateX(0) skewX(-20deg)}100%{transform:translateX(620%) skewX(-20deg)}}
 .drift{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden}
 .screen .drift{position:absolute}
-.drift i,.bst{position:absolute;left:0;top:0;width:var(--sz);height:calc(var(--sz) * 1.12);border-radius:calc(var(--sz) * .26);display:grid;place-items:center;font-style:normal;font-weight:800;font-size:calc(var(--sz) * .62);color:var(--ink);pointer-events:none}
-.drift i{opacity:.11;animation:drift linear infinite;will-change:transform}
-@keyframes drift{from{transform:translate3d(var(--x),108vh,0) rotate(0deg)}to{transform:translate3d(calc(var(--x) + var(--dx)),-18vh,0) rotate(var(--r1))}}
-.bst{position:fixed;opacity:0;animation:bst 1.6s ease-out both}
-@keyframes bst{0%{opacity:0;transform:translate3d(var(--x),104vh,0) rotate(0)}15%{opacity:.3}100%{opacity:0;transform:translate3d(calc(var(--x) + var(--dx)),-10vh,0) rotate(var(--r1))}}
+.drift i{position:absolute;left:0;top:0;width:var(--sz);height:var(--sz);border-radius:50%;background:#fff;opacity:var(--o);box-shadow:0 0 0 0 rgba(255,255,255,0);transition:opacity .3s ease-out,box-shadow .3s ease-out;animation:drift linear infinite;will-change:transform}
+.drift.lit i{opacity:1;box-shadow:0 0 10px 4px rgba(255,255,255,.85)}
+@keyframes drift{from{transform:translate3d(var(--x),106vh,0)}to{transform:translate3d(calc(var(--x) + var(--dx)),-6vh,0)}}
+.bst{position:fixed;left:0;top:0;width:var(--sz);height:var(--sz);border-radius:50%;background:#fff;box-shadow:0 0 8px 2px rgba(255,255,255,.7);opacity:0;pointer-events:none;animation:bst 1.5s ease-out both}
+@keyframes bst{0%{opacity:0;transform:translate3d(var(--x),104vh,0)}15%{opacity:.9}100%{opacity:0;transform:translate3d(calc(var(--x) + var(--dx)),-6vh,0)}}
 .sp{position:fixed;background:var(--yellow);clip-path:polygon(50% 0,60% 38%,100% 50%,60% 62%,50% 100%,40% 62%,0 50%,40% 38%);transform:translate(-50%,-50%) scale(0);pointer-events:none;animation:spk .75s ease-out forwards}
 @keyframes spk{0%{transform:translate(-50%,-50%) scale(0) rotate(0)}40%{transform:translate(-50%,-50%) scale(1) rotate(40deg)}100%{transform:translate(-50%,-50%) scale(0) rotate(90deg)}}
 .tool{position:relative}
@@ -896,28 +896,34 @@ function sparkle(x,y,size,col){
   el.style.cssText=`left:${x}px;top:${y}px;width:${size||14}px;height:${size||14}px;${col?`background:${col}`:''}`;
   $('fx').appendChild(el);setTimeout(()=>el.remove(),800);
 }
-const DRIFT_COLORS=['#FF4A1C','#FFD60A','#5CB8FF','#FF9A1F','#2F6BFF'];
 function buildDrift(){
   document.querySelectorAll('.bg').forEach(bg=>{
     if(bg.nextElementSibling&&bg.nextElementSibling.classList.contains('drift')) return;
     const d=document.createElement('div');d.className='drift';d.setAttribute('aria-hidden','true');
-    for(let i=0;i<9;i++){
-      const t=document.createElement('i'),sz=24+Math.random()*26;
-      t.style.cssText=`--x:${(Math.random()*96).toFixed(1)}vw;--dx:${(Math.random()*30-15).toFixed(1)}vw;--sz:${sz.toFixed(0)}px;--r0:${(Math.random()*60-30).toFixed(0)}deg;--r1:${(Math.random()*140-70).toFixed(0)}deg;background:${DRIFT_COLORS[i%5]};animation-duration:${(34+Math.random()*30).toFixed(0)}s;animation-delay:${(-Math.random()*60).toFixed(0)}s`;
+    for(let i=0;i<28;i++){
+      const t=document.createElement('i');
+      t.style.cssText=`--x:${(Math.random()*98).toFixed(1)}vw;--dx:${(Math.random()*16-8).toFixed(1)}vw;--sz:${(2+Math.random()*3.2).toFixed(1)}px;--o:${(.22+Math.random()*.3).toFixed(2)};animation-duration:${(32+Math.random()*34).toFixed(0)}s;animation-delay:${(-Math.random()*66).toFixed(0)}s`;
       d.appendChild(t);
     }
     bg.after(d);
   });
 }
 buildDrift();
-/* a quick flurry of letter tiles rising past the cube on big moments */
+/* the background particles light up for a moment when a word lands */
+let glowT=0;
+function glowDrift(len){
+  if(reduce) return;
+  document.querySelectorAll('.drift').forEach(d=>d.classList.add('lit'));
+  clearTimeout(glowT);glowT=setTimeout(()=>document.querySelectorAll('.drift').forEach(d=>d.classList.remove('lit')),len>=6?1300:850);
+}
+/* a quick flurry of sparks rising past the cube on big moments */
 function driftBurst(n){
   if(reduce) return;SWIRL.boost();
   const fx=$('fx');
-  for(let i=0;i<n;i++){
-    const t=document.createElement('i'),sz=22+Math.random()*22;t.className='bst';
-    t.style.cssText=`--x:${(Math.random()*92).toFixed(1)}vw;--dx:${(Math.random()*24-12).toFixed(1)}vw;--sz:${sz.toFixed(0)}px;--r1:${(Math.random()*160-80).toFixed(0)}deg;background:${DRIFT_COLORS[i%5]};animation-delay:${(i*70+Math.random()*120).toFixed(0)}ms;animation-duration:${(1.3+Math.random()*.6).toFixed(2)}s`;
-    fx.appendChild(t);setTimeout(()=>t.remove(),2400+i*70);
+  for(let i=0;i<n*2;i++){
+    const t=document.createElement('i');t.className='bst';
+    t.style.cssText=`--x:${(Math.random()*96).toFixed(1)}vw;--dx:${(Math.random()*18-9).toFixed(1)}vw;--sz:${(3+Math.random()*4).toFixed(1)}px;animation-delay:${(i*40+Math.random()*120).toFixed(0)}ms;animation-duration:${(1.2+Math.random()*.6).toFixed(2)}s`;
+    fx.appendChild(t);setTimeout(()=>t.remove(),2300+i*40);
   }
 }
 /* the logo twinkles now and then */
@@ -1292,7 +1298,7 @@ function accept(word,used){
   preview(word,'ok',[nf>1?`${nf} faces`:'',nNew?`face cleared${fb?` +${fb}`:''}`:''].filter(Boolean).join(' · '));
   if(word.length>=6||nNew){const cx=pts.reduce((a,q)=>a+q[0],0)/pts.length,cy=pts.reduce((a,q)=>a+q[1],0)/pts.length;for(let k=0;k<(nNew?5:3);k++) setTimeout(()=>sparkle(cx+(Math.random()-.5)*110,cy+(Math.random()-.5)*80,12+Math.random()*12),k*90)}
   if(nNew) driftBurst(10);else if(word.length>=7) driftBurst(6);
-  SFX.word(word.length,nf);HAP.word(word.length);if(nNew) setTimeout(()=>{SFX.face();HAP.face()},reduce?0:260);
+  SFX.word(word.length,nf);HAP.word(word.length);glowDrift(word.length);if(nNew) setTimeout(()=>{SFX.face();HAP.face()},reduce?0:260);
   ripple(word.length);
   if(!reduce){stage.style.setProperty('--k',Math.min(4,word.length-2));stage.classList.remove('thump');void stage.offsetWidth;stage.classList.add('thump');setTimeout(()=>stage.classList.remove('thump'),340)}
   spawnCoins(pts,c+fb);
@@ -1744,7 +1750,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261026-061718';
+const BUILD='20261026-062122';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
