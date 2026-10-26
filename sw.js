@@ -1,5 +1,5 @@
 // Wubix offline cache. Change VERSION whenever you publish, so players' offline copy refreshes.
-const VERSION = 'wubix-20261026-033705';
+const VERSION = 'wubix-20261026-033729';
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'favicon.svg', 'icon-192.png', 'icon-512.png',
   'Figtree-Medium.ttf', 'Figtree-SemiBold.ttf', 'Figtree-Bold.ttf', 'Figtree-ExtraBold.ttf'];
 self.addEventListener('install', e => e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES)).then(() => self.skipWaiting())));

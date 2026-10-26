@@ -774,14 +774,13 @@ function sparkle(x,y,size,col){
   el.style.cssText=`left:${x}px;top:${y}px;width:${size||14}px;height:${size||14}px;${col?`background:${col}`:''}`;
   $('fx').appendChild(el);setTimeout(()=>el.remove(),800);
 }
-const DRIFT_COLORS=['#FF4A1C','#FFD60A','#5CB8FF','#FF9A1F','#2F6BFF'],DRIFT_LETTERS='WUBIXAEIOTRSNLDH';
+const DRIFT_COLORS=['#FF4A1C','#FFD60A','#5CB8FF','#FF9A1F','#2F6BFF'];
 function buildDrift(){
   document.querySelectorAll('.bg').forEach(bg=>{
     if(bg.nextElementSibling&&bg.nextElementSibling.classList.contains('drift')) return;
     const d=document.createElement('div');d.className='drift';d.setAttribute('aria-hidden','true');
     for(let i=0;i<9;i++){
       const t=document.createElement('i'),sz=24+Math.random()*26;
-      t.textContent=DRIFT_LETTERS[Math.floor(Math.random()*DRIFT_LETTERS.length)];
       t.style.cssText=`--x:${(Math.random()*96).toFixed(1)}vw;--dx:${(Math.random()*30-15).toFixed(1)}vw;--sz:${sz.toFixed(0)}px;--r0:${(Math.random()*60-30).toFixed(0)}deg;--r1:${(Math.random()*140-70).toFixed(0)}deg;background:${DRIFT_COLORS[i%5]};animation-duration:${(34+Math.random()*30).toFixed(0)}s;animation-delay:${(-Math.random()*60).toFixed(0)}s`;
       d.appendChild(t);
     }
@@ -795,7 +794,6 @@ function driftBurst(n){
   const fx=$('fx');
   for(let i=0;i<n;i++){
     const t=document.createElement('i'),sz=22+Math.random()*22;t.className='bst';
-    t.textContent=DRIFT_LETTERS[Math.floor(Math.random()*DRIFT_LETTERS.length)];
     t.style.cssText=`--x:${(Math.random()*92).toFixed(1)}vw;--dx:${(Math.random()*24-12).toFixed(1)}vw;--sz:${sz.toFixed(0)}px;--r1:${(Math.random()*160-80).toFixed(0)}deg;background:${DRIFT_COLORS[i%5]};animation-delay:${(i*70+Math.random()*120).toFixed(0)}ms;animation-duration:${(1.3+Math.random()*.6).toFixed(2)}s`;
     fx.appendChild(t);setTimeout(()=>t.remove(),2400+i*70);
   }
@@ -1638,7 +1636,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261026-033705';
+const BUILD='20261026-033729';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
