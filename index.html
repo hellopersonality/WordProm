@@ -58,19 +58,21 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--yellow);outline
 .pill{appearance:none;border:0;height:36px;border-radius:var(--r-t);display:flex;align-items:center;justify-content:center;gap:6px;padding:0 12px;font-weight:800;font-size:20px;color:var(--ink);font-variant-numeric:tabular-nums;min-width:0}
 .pill.lvl{background:var(--orange);flex:.6 1 0}
 .pill.words{background:var(--sky);flex:1.1 1 0;cursor:pointer}
-.pill.words svg{width:16px;height:16px}
-.pill.dial{background:var(--ink);width:36px;flex:none;padding:0;position:relative;color:var(--paper);font-size:13px;font-weight:700}
-.dial svg{position:absolute;inset:2px;width:32px;height:32px}
-.dial circle{fill:none;stroke-width:9}
-.dial .track{stroke:#262626}
-.dial .fill{stroke:var(--paper);stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dashoffset .6s cubic-bezier(.3,1.4,.5,1)}
-.dial b{position:relative}
-.pill.coins{background:var(--yellow);flex:1.1 1 0;justify-content:space-between;padding:0 12px 0 9px}
+.pill.dial{background:#1E1E1E;flex:.75 1 0;position:relative;overflow:hidden;color:var(--paper)}
+/* stat pills: a small label over the number */
+.pill.stat{flex-direction:column;gap:2px;height:42px;padding:0 8px}
+.pill.stat .tag{font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;line-height:1;opacity:.62;white-space:nowrap}
+.pill.stat b{font-size:19px;line-height:1}
+.pill.stat .val{display:flex;align-items:center;gap:5px}
+.dial .meter{position:absolute;left:7px;right:7px;bottom:4px;height:3px;border-radius:2px;background:#2A2A2A;overflow:hidden}
+.dial .meter i{position:absolute;left:0;top:0;bottom:0;width:100%;background:var(--paper);border-radius:2px;transition:width .6s cubic-bezier(.3,1.4,.5,1)}
+.pill.coins{background:var(--yellow);flex:1.1 1 0}
+.pill.coins .coin{width:15px;height:15px}.pill.coins .coin::after{width:6px;height:6px}
 .coin{width:18px;height:18px;border-radius:50%;background:var(--ink);display:grid;place-items:center;flex:none}
 .coin::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--yellow)}
 .pill.coins.spend{animation:spend .5s}
 @keyframes spend{30%{background:var(--red)}}
-.pill.menu{background:var(--ink);width:36px;flex:none;padding:0;color:var(--paper);cursor:pointer}
+.pill.menu{background:var(--ink);width:36px;height:42px;flex:none;padding:0;color:var(--paper);cursor:pointer}
 .pill.menu svg{width:18px;height:18px}
 .pill.undo{background:var(--paper);color:var(--ink);transition:opacity .2s,background .2s}
 .pill.undo:disabled{background:#1F1F1F;color:#5A5A5A;cursor:default}
@@ -291,13 +293,10 @@ html.calm .bg{animation-duration:10s!important}
 <div class="ripples" aria-hidden="true"><svg id="ripples"></svg></div>
 <div class="app" id="app">
   <header class="mod bar" aria-label="Level status">
-    <div class="pill lvl jelly" id="lvlPill" style="--d:0" title="Level"><b id="lvl">1</b></div>
-    <button class="pill words jelly" id="wordsPill" style="--d:1" title="Words made. Tap to see them." aria-label="Words made">
-      <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 4.5h10M3 8h8M3 11.5h6"/></svg><b id="wordsVal">0</b></button>
-    <div class="pill dial jelly" id="goalClear" style="--d:2" title="Letters left">
-      <svg viewBox="0 0 100 100" aria-hidden="true"><circle class="track" cx="50" cy="50" r="42"/><circle class="fill" id="ring" cx="50" cy="50" r="42" stroke-dasharray="263.9" stroke-dashoffset="263.9"/></svg>
-      <b id="lettersVal">54</b></div>
-    <div class="pill coins jelly" id="coinTile" style="--d:3" title="Coins"><span class="coin" aria-hidden="true"></span><b id="coins">0</b></div>
+    <div class="pill stat lvl jelly" id="lvlPill" style="--d:0" title="Level"><span class="tag" id="lvlTag">Level</span><b id="lvl">1</b></div>
+    <button class="pill stat words jelly" id="wordsPill" style="--d:1" title="Words made. Tap to see them." aria-label="Words made"><span class="tag">Words</span><b id="wordsVal">0</b></button>
+    <div class="pill stat dial jelly" id="goalClear" style="--d:2" title="Letters left"><span class="tag">Left</span><b id="lettersVal">54</b><i class="meter" aria-hidden="true"><i id="ring"></i></i></div>
+    <div class="pill stat coins jelly" id="coinTile" style="--d:3" title="Coins"><span class="tag">Coins</span><span class="val"><span class="coin" aria-hidden="true"></span><b id="coins">0</b></span></div>
     <button class="pill menu undo" id="undoBtn" title="Undo the last word or placed letter" aria-label="Undo" disabled>
       <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 4.5 3.5 8.5l4 4"/><path d="M4 8.5h7.5a5 5 0 0 1 0 10H9"/></svg></button>
     <button class="pill menu" id="menuBtn" title="Menu" aria-label="Menu">
@@ -431,7 +430,7 @@ const CFG_META=[
   ['startCoins','Starting coins',0,5000],
   ['undoCost','Undo cost',0,500]
 ];
-const DEFAULT_CFG={minLen:2,coinsPerLetter:2,longBonus:5,crossBonus:4,levelBonus:25,clearBonus:100,cleanBonus:100,traySize:5,trayResetCost:50,freeCollapses:1,collapseCost:60,wildsPerSet:1,sweepMax:8,sweepCost:15,startCoins:100,undoCost:0};
+const DEFAULT_CFG={minLen:2,coinsPerLetter:2,longBonus:5,crossBonus:4,levelBonus:25,clearBonus:100,cleanBonus:100,traySize:5,trayResetCost:50,freeCollapses:1,collapseCost:60,wildsPerSet:1,sweepMax:8,sweepCost:15,startCoins:0,undoCost:0};
 
 /* ---------- dictionary ---------- */
 const DICT=new Set(), PREF=new Set();
@@ -488,7 +487,7 @@ function save(){
   if(!G||G.mode==='tutorial') return;
   if(isEndless()&&G.solution.length>80) G.solution=G.solution.slice(-80);
   const st={...G,note:null,stickers:G.stickers.map(s=>({id:s.id,pos:s.pos,n:s.n,ch:s.ch,hue:s.hue}))};
-  const rec={level:G.level,coins:G.coins,words:G.found.length,cfg,state:st};
+  const rec={level:G.level,coins:G.coins,words:G.found.length,cfg:{...cfg,v2:1},state:st};
   if(isEndless()){savedE=rec;try{localStorage.setItem(ENDLESS_KEY,JSON.stringify(rec))}catch(e){}}
   else{saved=rec;try{localStorage.setItem(SAVE_KEY,JSON.stringify(rec))}catch(e){}}
 }
@@ -628,12 +627,12 @@ function hud(){
   const left=G.stickers.filter(s=>s.ch).length, total=G.stickers.length, made=G.found.length;
   if(lastHud.level!==undefined&&lastHud.level!==G.level) juice($('lvlPill'));
   document.documentElement.classList.toggle('endless',isEndless());
-  $('lvl').textContent=isEndless()?'∞':G.level;$('lvlPill').title=isEndless()?'Endless':'Level';
+  $('lvl').textContent=isEndless()?'∞':G.level;$('lvlPill').title=isEndless()?'Endless':'Level';$('lvlTag').textContent=isEndless()?'Endless':'Level';
   $('wordsVal').textContent=made;
   if(lastHud.made!==undefined&&made>lastHud.made) juice($('wordsPill'));
   $('lettersVal').textContent=left;
   if(lastHud.left!==undefined&&left!==lastHud.left) juice($('goalClear'));
-  $('ring').style.strokeDashoffset=(263.9*(left/total)).toFixed(1);
+  $('ring').style.width=(100*left/total).toFixed(1)+'%';
   $('goalClear').title=left===0?'Cube cleared':`${left} letters left`;
   $('minLenTxt').textContent=cfg.minLen;
   setCoins(G.coins);
@@ -1393,7 +1392,7 @@ function held(el){if(el._held){el._held=false;return true}return false}
 
 function start(data){
   saved=load();savedE=load(ENDLESS_KEY);
-  if(saved&&saved.cfg) cfg={...DEFAULT_CFG,...saved.cfg};
+  if(saved&&saved.cfg){cfg={...DEFAULT_CFG,...saved.cfg};if(!saved.cfg.v2){cfg.startCoins=DEFAULT_CFG.startCoins}}
   if(data&&data.G&&data.G.stickers){
     G=data.G;if(data.cfg)cfg={...DEFAULT_CFG,...data.cfg};G.stickers.sort((a,b)=>a.id-b.id);
     buildTune();
