@@ -110,6 +110,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--yellow);outline
 .h-r{--c:var(--st-r);--tc:var(--st-dark)} .h-b{--c:var(--st-b);--tc:var(--st-light)} .h-g{--c:var(--st-g);--tc:var(--st-dark)}
 .sticker.empty .tile{background:color-mix(in srgb,var(--c) 26%,var(--plastic))}
 .sticker.sel .tile{transform:scale(.9);box-shadow:0 0 0 calc(var(--s) * .07) var(--paper)}
+.sticker.going .tile{transform:scale(.9)}
 .sticker.pop .tile{transform:scale(1.25) rotate(8deg);opacity:0}
 .tile .ch{display:block;transition:transform .42s cubic-bezier(.3,.1,.2,1)}
 .fresh .tile{animation:fade .18s ease-out}
@@ -319,6 +320,7 @@ html.calm .bg{animation-duration:10s!important}
 .drift i{position:absolute;left:0;top:0;width:var(--sz);height:var(--sz);border-radius:50%;background:#fff;opacity:var(--o);box-shadow:0 0 0 0 rgba(255,255,255,0);transition:opacity .3s ease-out,box-shadow .3s ease-out;animation:drift linear infinite;will-change:transform}
 .drift.lit i{opacity:1;box-shadow:0 0 10px 4px rgba(255,255,255,.85)}
 @keyframes drift{from{transform:translate3d(var(--x),106vh,0)}to{transform:translate3d(calc(var(--x) + var(--dx)),-6vh,0)}}
+.lp{position:fixed;left:0;top:0;border-radius:50%;pointer-events:none;will-change:transform,opacity}
 .bst{position:fixed;left:0;top:0;width:var(--sz);height:var(--sz);border-radius:50%;background:#fff;box-shadow:0 0 8px 2px rgba(255,255,255,.7);opacity:0;pointer-events:none;animation:bst 1.5s ease-out both}
 @keyframes bst{0%{opacity:0;transform:translate3d(var(--x),104vh,0)}15%{opacity:.9}100%{opacity:0;transform:translate3d(calc(var(--x) + var(--dx)),-6vh,0)}}
 .sp{position:fixed;background:var(--yellow);clip-path:polygon(50% 0,60% 38%,100% 50%,60% 62%,50% 100%,40% 62%,0 50%,40% 38%);transform:translate(-50%,-50%) scale(0);pointer-events:none;animation:spk .75s ease-out forwards}
@@ -332,7 +334,7 @@ html.calm .bg{animation-duration:10s!important}
 @keyframes stamp{from{transform:scale(2.4) rotate(-14deg);opacity:0}}
 .tune .vol input{width:150px;padding:0;background:none;transform:none;accent-color:var(--yellow)}
 .tune .vol input:disabled{opacity:.4}
-html.calm .btn.primary::after,html.calm #tContinue::after,html.calm #tNew::after,html.calm .tool.ready::after,html.calm .drift,html.calm .sp,html.calm .bst{display:none!important}
+html.calm .btn.primary::after,html.calm #tContinue::after,html.calm #tNew::after,html.calm .tool.ready::after,html.calm .drift,html.calm .sp,html.calm .bst,html.calm .lp{display:none!important}
 .swirl{position:absolute;left:0;top:0;width:100%;height:100%;z-index:-2;pointer-events:none;image-rendering:pixelated;image-rendering:crisp-edges;background:var(--ground)}
 .swirl.fixed{position:fixed}
 
@@ -1295,9 +1297,27 @@ function accept(word,used){
   if(!reduce){stage.style.setProperty('--k',Math.min(4,word.length-2));stage.classList.remove('thump');void stage.offsetWidth;stage.classList.add('thump');setTimeout(()=>stage.classList.remove('thump'),340)}
   spawnCoins(pts,c+fb);
   busy=true;
-  used.forEach(s=>elById[s.id]&&elById[s.id].classList.add('pop'));
+  /* the letters go one after another in the order they were spelled, each bursting into particles */
+  const step=reduce?0:Math.min(80,520/used.length);
+  used.forEach((s,i)=>{const el=elById[s.id];if(!el) return;el.classList.add('going');
+    setTimeout(()=>{el.classList.add('pop');letterBurst(el,i)},i*step)});
   paintSel();
-  setTimeout(()=>{if(isEndless())refill(used);else used.forEach(s=>s.ch=null);busy=false;render();faceFx.forEach(flashFace);progress()},reduce?0:230);
+  setTimeout(()=>{if(isEndless())refill(used);else used.forEach(s=>s.ch=null);busy=false;render();faceFx.forEach(flashFace);progress()},reduce?0:(used.length-1)*step+230);
+}
+/* small particles fly out from a letter as it goes, tinted like the tile with a few white ones */
+function letterBurst(el,i){
+  if(reduce) return;
+  const tile=el.querySelector('.tile');if(!tile) return;
+  const [x,y]=centerOf(el),col=getComputedStyle(tile).backgroundColor,fx=$('fx'),n=14;
+  for(let k=0;k<n;k++){
+    const p=document.createElement('i'),white=k%3===0,sz=4+Math.random()*5;
+    p.className='lp';p.style.cssText=`width:${sz}px;height:${sz}px;background:${white?'#fff':col};box-shadow:0 0 ${white?'8px 3px rgba(255,255,255,.9)':'5px 1px '+col}`;
+    const ang=(k/n)*Math.PI*2+Math.random()*.8,d=S*(.6+Math.random()*.9);
+    fx.appendChild(p);
+    p.animate([{transform:`translate(${x}px,${y}px) scale(1)`,opacity:1},
+      {transform:`translate(${x+Math.cos(ang)*d}px,${y+Math.sin(ang)*d+S*.3}px) scale(0)`,opacity:0}],
+      {duration:480+Math.random()*380,easing:'cubic-bezier(.12,.7,.3,1)',fill:'forwards'}).onfinish=()=>p.remove();
+  }
 }
 function flashFace(fk){G.stickers.filter(s=>key(s.n)===fk).forEach((s,i)=>{const el=elById[s.id];if(!el) return;el.style.setProperty('--fi',i);el.classList.add('fclr');setTimeout(()=>el.classList.remove('fclr'),1500)})}
 /* endless: the squares a word leaves are filled straight away with a new hidden word (or words)
@@ -1742,7 +1762,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261026-062437';
+const BUILD='20261026-213723';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
