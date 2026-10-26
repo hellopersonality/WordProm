@@ -1,6 +1,6 @@
 {
-  "name": "WordProm",
-  "short_name": "WordProm",
+  "name": "Wubix",
+  "short_name": "Wubix",
   "description": "Trace words across a 3x3 letter cube, twist rows and columns, and clear every letter.",
   "start_url": "./",
   "scope": "./",

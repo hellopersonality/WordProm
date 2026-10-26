@@ -1,4 +1,4 @@
-# WordProm
+# Wubix
 
 A word puzzle on a 3x3 letter cube. Trace words across faces, twist rows and columns, clear every letter,
 or play Endless mode where every word is replaced by new letters.
