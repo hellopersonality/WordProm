@@ -114,7 +114,6 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--yellow);outline
 html.endless #goalClear,html.endless #collapseBtn{display:none}
 .tile.wild{background:var(--plastic);color:var(--yellow);box-shadow:inset 0 0 0 calc(var(--s) * .06) var(--yellow)}
 .sticker.drop-ok .tile{box-shadow:inset 0 0 0 calc(var(--s) * .05) var(--yellow)}
-.sticker.drop-hover .tile{background:var(--yellow)}
 .trail{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
 .trail line{stroke-linecap:round}
 
@@ -167,12 +166,10 @@ html.endless #goalClear,html.endless #collapseBtn{display:none}
 .tray-t{flex:1 1 auto;min-width:0;background:var(--ink);border-radius:var(--r-t);display:flex;gap:4px;align-items:center;justify-content:center;padding:6px;touch-action:none}
 .tl{appearance:none;width:34px;height:38px;border-radius:10px;border:0;background:var(--paper);color:var(--ink);display:grid;place-items:center;cursor:grab;font-family:var(--f);font-weight:800;font-size:19px;text-transform:uppercase;touch-action:none;user-select:none;-webkit-user-select:none;transition:transform .15s;flex:1 1 0;max-width:34px;min-width:0;padding:0}
 @media (hover:hover){ .tl:hover{transform:translateY(-3px) rotate(-3deg)} }
-.tl.lifted{opacity:.2}
 .tray-t .tl.picked{transform:translateY(-9px) scale(1.12);box-shadow:0 0 0 3px var(--yellow),0 8px 16px rgba(0,0,0,.45);z-index:1}
 .stage.picking .sticker.drop-ok .tile{animation:spot 1.2s ease-in-out infinite}
-.tl.wild,.ghost.wild{background:var(--ink);color:var(--yellow);box-shadow:inset 0 0 0 3px var(--yellow)}
+.tl.wild{background:var(--ink);color:var(--yellow);box-shadow:inset 0 0 0 3px var(--yellow)}
 .tray-empty{width:34px;height:38px;border-radius:10px;box-shadow:inset 0 0 0 2px #2A2A2A;flex:1 1 0;max-width:34px;min-width:0}
-.ghost{position:fixed;left:0;top:0;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:14px;background:var(--paper);color:var(--ink);display:grid;place-items:center;font:800 26px/1 var(--f);text-transform:uppercase;pointer-events:none;z-index:30;box-shadow:0 14px 28px rgba(0,0,0,.45)}
 .pad{width:52px;height:52px;flex:none;border-radius:var(--r-t);background:var(--ink);position:relative;touch-action:none;cursor:grab;-webkit-touch-callout:none;user-select:none}
 .pad svg{position:absolute;inset:0;width:100%;height:100%}
 .pad .chev{fill:none;stroke:var(--paper);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:stroke .15s}
@@ -237,8 +234,6 @@ html.endless #goalClear,html.endless #collapseBtn{display:none}
 @keyframes handdeal{from{transform:translate(140px,-26px) rotate(28deg) scale(.7);opacity:0}}
 @media (hover:hover){ .tray-t .tl:hover{transform:translateY(-7px) scale(1.1);z-index:1} }
 .tray-t .tl:active{transform:translateY(-4px) scale(1.06)}
-.ghost{transition:rotate .18s ease-out,scale .2s cubic-bezier(.2,1.8,.4,1);animation:lift .25s cubic-bezier(.2,1.8,.4,1) both}
-@keyframes lift{from{scale:.6}}
 /* the coin in the bar turns over now and then */
 .coin{animation:flip 5s ease-in-out infinite}
 @keyframes flip{0%,84%{transform:rotateY(0)}100%{transform:rotateY(360deg)}}
@@ -329,7 +324,7 @@ html.calm .bg{animation-duration:10s!important}
     <button class="tool collapse jelly" id="collapseBtn" style="--d:4" title="Collapse: pulls stranded letters together on each face" aria-label="Collapse">
       <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l5 5M9 5v4H5M20 4l-5 5M15 5v4h4M4 20l5-5M9 19v-4H5M20 20l-5-5M15 19v-4h4"/></svg>
       <span class="cost" id="collapseSub">free</span></button>
-    <div class="tray-t" id="tray" role="group" aria-label="Free letters" title="Free letters: drag one onto an empty square"></div>
+    <div class="tray-t" id="tray" role="group" aria-label="Free letters" title="Free letters: tap one, then tap a glowing square"></div>
     <button class="tool renew jelly" id="trayReset" style="--d:5" title="New letters: swaps the tray for a fresh set, wildcard included" aria-label="New letters">
       <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4"/></svg>
       <span class="cost" id="trayResetSub">50 coins</span></button>
@@ -379,12 +374,12 @@ html.calm .bg{animation-duration:10s!important}
       <li><b>Clear the cube</b>Empty every letter to finish the level and move on.</li>
       <li><b>Always clearable</b>Every cube starts out fully clearable. Collapse and tray letters help when you get stuck.</li>
       <li><b>Turn</b>Drag the empty space around the cube, or tap and drag the turn pad, to see other faces.</li>
-      <li><b>Free letters</b>Drag a tray letter onto an empty square. A <b style="display:inline;font-size:inherit">?</b> fits any word. New letters buys a fresh set.</li>
+      <li><b>Free letters</b>Tap a tray letter, then tap a glowing empty square. A <b style="display:inline;font-size:inherit">?</b> fits any word. New letters buys a fresh set.</li>
       <li><b>Undo</b>Takes back the last word you made or the last tray letter you placed, coins and all. Collapse, sweep, reshuffle and new letters can't be undone.</li>
       <li><b>Collapse</b>Slides each face's letters together so stranded ones touch again.</li>
       <li><b>Sweep</b>When nothing is left to spell, clear the last few letters for coins.</li>
       <li><b>No help</b>Clear the cube without sweeping for an extra bonus.</li>
-      <li><b>Endless</b>Every word you make is replaced by new letters, so the cube never empties. Tray letters can be dropped on any square to swap it. Play as long as you like.</li>
+      <li><b>Endless</b>Every word you make is replaced by new letters, so the cube never empties. Tap a tray letter, then tap any square to swap it in. Play as long as you like.</li>
     </ul>
     <div class="tune" id="tune" hidden></div>
   </div>
@@ -854,7 +849,7 @@ function collapseLetters(){
   return moved;
 }
 function collapse(){
-  if(busy||G.done||drag) return;
+  if(busy||G.done) return;
   if(T&&T.step.wait!=='collapse') return;
   const free=(G.collapses||0)<cfg.freeCollapses;
   if(!free&&G.coins<cfg.collapseCost){toast(`A collapse costs ${cfg.collapseCost} coins. Make words to earn more.`);return}
@@ -920,7 +915,7 @@ const UNDO_MAX=30;
 function pushUndo(rec){(G.undo=G.undo||[]).push(rec);if(G.undo.length>UNDO_MAX)G.undo.shift()}
 function clearUndo(){G.undo=[]}
 function undo(){
-  if(busy||drag||G.done||!playing) return;
+  if(busy||G.done||!playing) return;
   if(T&&T.step.wait!=='undo') return;
   const rec=G.undo&&G.undo[G.undo.length-1];if(!rec) return;
   const cost=cfg.undoCost||0;
@@ -1130,11 +1125,11 @@ stage.addEventListener('pointercancel',endGesture);
 
 /* ---------- letter tray ----------
    Tap a tray letter to pick it up: the squares it can go on light up, and tapping one places it.
-   Tapping anywhere else puts it back. Dragging a letter straight onto a square still works too. */
-let drag=null, picked=null;
+   Tapping anywhere else puts it back. */
+let picked=null;
 const tray=$('tray');
 const canTake=s=>(!s.ch||isEndless())&&(!T||T.dropId===s.id);
-function clearDrop(){for(const id in elById)elById[id].classList.remove('drop-ok','drop-hover');stage.classList.remove('picking')}
+function clearDrop(){for(const id in elById)elById[id].classList.remove('drop-ok');stage.classList.remove('picking')}
 function showSpots(){G.stickers.forEach(s=>{if(canTake(s)&&elById[s.id])elById[s.id].classList.add('drop-ok')})}
 function setPick(i){picked=i;clearDrop();if(i!=null){showSpots();stage.classList.add('picking');path=[];paintSel()}hud()}
 function placeLetter(i,st){
@@ -1142,50 +1137,21 @@ function placeLetter(i,st){
   const swap=!!st.ch;pushUndo({t:'p',id:st.id,old:st.ch,ch,i});st.ch=ch;st.born=0;G.lettersAdded++;G.tray.splice(i,1);
   render();tutEvent('place');preview(ch,'ok',swap?(G.tray.length?`swapped · ${G.tray.length} left`:'swapped · tray empty'):G.tray.length?`placed · ${G.tray.length} left`:'placed · tray empty');status();save();
 }
-tray.addEventListener('pointerdown',e=>{
-  const b=e.target.closest('.tl');if(!b||!playing||busy||G.done||e.button>0) return;
-  if(T&&(T.step.wait!=='place'||(T.step.trayPick&&G.tray[+b.dataset.i]!==T.step.trayPick))) return;
-  e.preventDefault();
-  try{tray.setPointerCapture(e.pointerId)}catch(_){}
-  drag={i:+b.dataset.i,b,x:e.clientX,y:e.clientY,moved:false,over:null,lift:e.pointerType==='touch'?-74:0};
+tray.addEventListener('click',e=>{
+  const b=e.target.closest('.tl');if(!b||!playing||busy||G.done) return;
+  const i=+b.dataset.i;
+  if(T&&(T.step.wait!=='place'||(T.step.trayPick&&G.tray[i]!==T.step.trayPick))) return;
+  setPick(picked===i?null:i);
 });
-tray.addEventListener('pointermove',e=>{
-  if(!drag) return;
-  if(!drag.moved){
-    if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)<8) return;
-    /* it's a drag: lift a ghost copy and light up where it can go */
-    drag.moved=true;picked=null;
-    const gh=document.createElement('div');gh.className='ghost'+(G.tray[drag.i]==='?'?' wild':'');gh.textContent=G.tray[drag.i];document.body.appendChild(gh);drag.gh=gh;
-    hud();const b=tray.querySelector(`.tl[data-i="${drag.i}"]`);if(b){b.classList.add('lifted');drag.b=b}
-    clearDrop();showSpots();path=[];paintSel();
-  }
-  drag.gh.style.transform=`translate(${e.clientX}px,${e.clientY+drag.lift}px) rotate(-6deg)`;
-  if(!reduce){const vx=e.clientX-(drag.lx??e.clientX);drag.lx=e.clientX;drag.gh.style.rotate=`${Math.max(-22,Math.min(22,vx*2.2)).toFixed(1)}deg`;
-    clearTimeout(drag.rt);drag.rt=setTimeout(()=>{if(drag&&drag.gh)drag.gh.style.rotate='0deg'},70)}
-  const t=stickerAt(e.clientX,e.clientY), st=t&&byId(+t.dataset.id);
-  const ok=st&&canTake(st)?st:null;
-  if(ok!==drag.over){if(drag.over&&elById[drag.over.id])elById[drag.over.id].classList.remove('drop-hover');drag.over=ok;if(ok)elById[ok.id].classList.add('drop-hover');drag.gh.style.scale=ok?'1.15':'1'}
-});
-function endDrag(e){
-  if(!drag) return;
-  const d=drag;drag=null;
-  if(!d.moved){if(e.type!=='pointercancel')setPick(picked===d.i?null:d.i);return}
-  d.gh.remove();if(d.b)d.b.classList.remove('lifted');clearDrop();
-  if(e.type==='pointercancel'){hud();return}
-  if(d.over) placeLetter(d.i,d.over);
-  else{hud();const t=stickerAt(e.clientX,e.clientY);if(t) toast(isEndless()?'Drop the letter on a square to swap it in.':'Drop the letter on an empty square.')}
-}
 /* a tap anywhere off the tray and cube puts a picked-up letter back */
 document.addEventListener('pointerdown',e=>{if(picked==null||!e.target.closest)return;if(e.target.closest('#tray')||e.target.closest('#stage'))return;setPick(null)},true);
-tray.addEventListener('pointerup',endDrag);
 $('trayReset').onclick=()=>{
   if(held($('trayReset'))) return;
-  if(busy||G.done||drag||T) return;
+  if(busy||G.done||T) return;
   if(G.coins<cfg.trayResetCost){toast(`New letters cost ${cfg.trayResetCost} coins. Make words to earn more.`);return}
   G.coins-=cfg.trayResetCost;G.spent+=cfg.trayResetCost;G.trayResets=(G.trayResets||0)+1;G.tray=makeTray();G._deal=true;clearUndo();picked=null;clearDrop();
   hud();status();save();toast(`New set of ${G.tray.length} letters.`);
 };
-tray.addEventListener('pointercancel',endDrag);
 $('collapseBtn').onclick=()=>{if(!held($('collapseBtn')))collapse()};
 $('nextBtn').onclick=()=>{newLevel(G.level+1,G.coins);size();render(true);status();save();introSpin()};
 document.addEventListener('keydown',e=>{
@@ -1306,7 +1272,7 @@ function fingerLoop(){
   if(!T){fingerRunning=false;finger.classList.remove('on','press');return}
   requestAnimationFrame(fingerLoop);
   const st=T.step,now=performance.now();
-  if(busy||drag||path.length||gesture||!st.hint||now<T.hintAt||!$('pause').hidden){finger.classList.remove('on','press');if(path.length||drag||gesture)T.hintAt=now+1600;return}
+  if(busy||path.length||gesture||!st.hint||now<T.hintAt||!$('pause').hidden){finger.classList.remove('on','press');if(path.length||gesture)T.hintAt=now+1600;return}
   let pts=[];
   const at=id=>elById[id]?centerOf(elById[id]):null;
   if(st.hint==='trace') pts=(T.ids||[]).map(at).filter(Boolean);
@@ -1326,7 +1292,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261026-013626';
+const BUILD='20261026-014543';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
@@ -1342,7 +1308,7 @@ async function checkUpdate(){
 const within=(p,ms)=>Promise.race([Promise.resolve(p).catch(()=>{}),new Promise(r=>setTimeout(r,ms))]);
 async function applyUpdate(){
   const btn=$('updateGo');btn.disabled=true;btn.textContent='Updating';
-  const until=Date.now()+1500;while((busy||drag)&&Date.now()<until) await new Promise(r=>setTimeout(r,50));
+  const until=Date.now()+1500;while(busy&&Date.now()<until) await new Promise(r=>setTimeout(r,50));
   if(G&&playing&&G.mode!=='tutorial'){save();try{sessionStorage.setItem('wordprom-resume',G.mode)}catch(e){}}
   try{const reg=navigator.serviceWorker&&await within(navigator.serviceWorker.getRegistration(),800);if(reg&&reg.update)reg.update().catch(()=>{})}catch(e){}
   await within(fetch('index.html',{cache:'reload'}),1500);
