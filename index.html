@@ -112,7 +112,6 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--yellow);outline
 .sticker.born .tile{animation:born .42s cubic-bezier(.3,1.6,.5,1) both;animation-delay:calc(var(--b,0)*45ms)}
 @keyframes born{from{transform:translateZ(calc(var(--s)*.04)) scale(.2) rotate(-25deg);opacity:0}}
 html.endless #goalClear,html.endless #collapseBtn{display:none}
-.tile.wild{background:var(--plastic);color:var(--yellow);box-shadow:inset 0 0 0 calc(var(--s) * .06) var(--yellow)}
 .sticker.drop-ok .tile{box-shadow:inset 0 0 0 calc(var(--s) * .05) var(--yellow)}
 .trail{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
 .trail line{stroke-linecap:round}
@@ -168,7 +167,6 @@ html.endless #goalClear,html.endless #collapseBtn{display:none}
 @media (hover:hover){ .tl:hover{transform:translateY(-3px) rotate(-3deg)} }
 .tray-t .tl.picked{transform:translateY(-9px) scale(1.12);box-shadow:0 0 0 3px var(--yellow),0 8px 16px rgba(0,0,0,.45);z-index:1}
 .stage.picking .sticker.drop-ok .tile{animation:spot 1.2s ease-in-out infinite}
-.tl.wild{background:var(--ink);color:var(--yellow);box-shadow:inset 0 0 0 3px var(--yellow)}
 .tray-empty{width:34px;height:38px;border-radius:10px;box-shadow:inset 0 0 0 2px #2A2A2A;flex:1 1 0;max-width:34px;min-width:0}
 .pad{width:52px;height:52px;flex:none;border-radius:var(--r-t);background:var(--ink);position:relative;touch-action:none;cursor:grab;-webkit-touch-callout:none;user-select:none}
 .pad svg{position:absolute;inset:0;width:100%;height:100%}
@@ -325,7 +323,7 @@ html.calm .bg{animation-duration:10s!important}
       <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l5 5M9 5v4H5M20 4l-5 5M15 5v4h4M4 20l5-5M9 19v-4H5M20 20l-5-5M15 19v-4h4"/></svg>
       <span class="cost" id="collapseSub">free</span></button>
     <div class="tray-t" id="tray" role="group" aria-label="Free letters" title="Free letters: tap one, then tap a glowing square"></div>
-    <button class="tool renew jelly" id="trayReset" style="--d:5" title="New letters: swaps the tray for a fresh set, wildcard included" aria-label="New letters">
+    <button class="tool renew jelly" id="trayReset" style="--d:5" title="New letters: swaps the tray for a fresh set" aria-label="New letters">
       <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4"/></svg>
       <span class="cost" id="trayResetSub">50 coins</span></button>
     <div class="pad" id="pad" role="group" aria-label="Turn the cube: tap a side or drag" title="Turn the cube: tap a side of the pad, or drag it">
@@ -374,7 +372,7 @@ html.calm .bg{animation-duration:10s!important}
       <li><b>Clear the cube</b>Empty every letter to finish the level and move on.</li>
       <li><b>Always clearable</b>Every cube starts out fully clearable. Collapse and tray letters help when you get stuck.</li>
       <li><b>Turn</b>Drag the empty space around the cube, or tap and drag the turn pad, to see other faces.</li>
-      <li><b>Free letters</b>Tap a tray letter, then tap a glowing empty square. A <b style="display:inline;font-size:inherit">?</b> fits any word. New letters buys a fresh set.</li>
+      <li><b>Free letters</b>Tap a tray letter, then tap a glowing empty square. New letters buys a fresh set.</li>
       <li><b>Undo</b>Takes back the last word you made or the last tray letter you placed, coins and all. Collapse, sweep, reshuffle and new letters can't be undone.</li>
       <li><b>Collapse</b>Slides each face's letters together so stranded ones touch again.</li>
       <li><b>Sweep</b>When nothing is left to spell, clear the last few letters for coins.</li>
@@ -417,7 +415,6 @@ const CFG_META=[
   ['cleanBonus','Extra for a clear with no sweeps',0,1000],
   ['traySize','Free tray letters per level',0,10],
   ['trayResetCost','Cost to get new tray letters',0,500],
-  ['wildsPerSet','Wildcards in each tray set',0,5],
   ['sweepMax','Sweep allowed at or below this many letters',0,54],
   ['sweepCost','Sweep cost per letter',0,200],
   ['freeCollapses','Free collapses per level',0,10],
@@ -425,7 +422,7 @@ const CFG_META=[
   ['startCoins','Starting coins',0,5000],
   ['undoCost','Undo cost',0,500]
 ];
-const DEFAULT_CFG={minLen:2,coinsPerLetter:2,longBonus:5,crossBonus:4,levelBonus:25,clearBonus:100,cleanBonus:100,traySize:5,trayResetCost:50,freeCollapses:1,collapseCost:60,wildsPerSet:1,sweepMax:8,sweepCost:15,startCoins:0,undoCost:0};
+const DEFAULT_CFG={minLen:2,coinsPerLetter:2,longBonus:5,crossBonus:4,levelBonus:25,clearBonus:100,cleanBonus:100,traySize:5,trayResetCost:50,freeCollapses:1,collapseCost:60,sweepMax:8,sweepCost:15,startCoins:0,undoCost:0};
 
 /* ---------- dictionary ---------- */
 const DICT=new Set(), PREF=new Set();
@@ -489,6 +486,7 @@ function save(){
 function restore(st){
   if(!st||!st.stickers||st.stickers.length!==54) return false;
   G={...st,note:null};G.stickers=st.stickers.map(s=>({...s}));G.stickers.sort((a,b)=>a.id-b.id);
+  G.stickers.forEach(x=>{if(x.ch==='?')x.ch=trayLetter()});if(G.tray)G.tray=G.tray.map(c=>c==='?'?trayLetter():c);G.undo=[];
   path=[];$('sheet').hidden=true;
   if(G.done){newLevel(G.level+1,G.coins);return true}
   return true;
@@ -507,25 +505,9 @@ const VOW='aeiou';
 const SPLITS=[[4,5],[4,5],[3,6],[3,6],[3,3,3]];
 const trayLetter=()=>pick(BAG);
 function makeTray(){
-  const nw=Math.min(cfg.wildsPerSet,cfg.traySize),nl=cfg.traySize-nw;let a=null;
-  for(let t=0;t<50&&!a;t++){const b=Array.from({length:nl},trayLetter);if(b.filter(c=>VOW.includes(c)).length>=Math.min(2,b.length))a=b}
-  a=a||Array.from({length:nl},trayLetter);
-  for(let i=0;i<nw;i++) a.splice(rnd(a.length+1),0,'?');
-  return a;
-}
-/* wildcard tiles ('?') stand for any letter; pick the most common unused word that fits */
-const ALPHA='abcdefghijklmnopqrstuvwxyz';
-function resolveWild(pat){
-  const found=new Set(G.found.map(f=>f.w)),hits=[];
-  (function go(i,s){
-    if(hits.length>400) return;
-    if(i===pat.length){if(DICT.has(s)&&!found.has(s))hits.push(s);return}
-    if(s&&!PREF.has(s)) return;
-    for(const L of pat[i]==='?'?ALPHA:pat[i]) go(i+1,s+L);
-  })(0,'');
-  if(!hits.length) return null;
-  hits.sort((x,y)=>(COMMON.has(y)-COMMON.has(x))||x.localeCompare(y));
-  return hits[0];
+  const n=cfg.traySize;let a=null;
+  for(let t=0;t<50&&!a;t++){const b=Array.from({length:n},trayLetter);if(b.filter(c=>VOW.includes(c)).length>=Math.min(2,b.length))a=b}
+  return a||Array.from({length:n},trayLetter);
 }
 function newLevel(level,coins,mode){
   mode=mode||(G&&G.mode)||'classic';
@@ -560,9 +542,9 @@ function cubeWords(firstOnly,onlyFaces){
     if(stop) return;
     if(str.length>=cfg.minLen&&DICT.has(str)&&!found.has(str)){out.push({w:str,path:p.slice(),fk:key(p[0].n)});if(firstOnly){stop=true;return}}
     if(!PREF.has(str)) return;
-    for(const c of nb.get(p[p.length-1])){ if(!p.includes(c)){p.push(c);for(const L of c.ch==='?'?ALPHA:c.ch){dfs(p,str+L);if(stop)break}p.pop()} }
+    for(const c of nb.get(p[p.length-1])){ if(!p.includes(c)){p.push(c);dfs(p,str+c.ch);p.pop()} }
   }
-  for(const c of cells){for(const L of c.ch==='?'?ALPHA:c.ch){dfs([c],L);if(stop)break}if(stop)break}
+  for(const c of cells){dfs([c],c.ch);if(stop)break}
   return out;
 }
 const faceWords=(fk,firstOnly)=>cubeWords(firstOnly,[fk]);
@@ -584,7 +566,7 @@ function render(fresh){
       const s=map[key(p)+'|'+fk];
       if(s){f.className='face sticker h-'+s.hue+(s.ch?'':' empty')+(fresh?' fresh':'');f.dataset.id=s.id;if(T&&T.dropId===s.id)f.classList.add('coach-spot');if(picked!=null&&canTake(s))f.classList.add('drop-ok');
         {const q=[0,1,2].map(i=>p[i]+s.n[i]*.5);f.style.setProperty('--ph',`${-(clock+(q[0]-q[1]+q[2])*.32+9).toFixed(3)}s`)}
-        const t=document.createElement('div');t.className='tile'+(s.ch==='?'?' wild':'');if(s.ch){const c=document.createElement('span');c.className='ch';c.textContent=s.ch;if(s.spin){c.style.transition='none';c.style.transform=`rotate(${s.spin}deg)`;spun.push(c)}t.appendChild(c)}if(s.born!==undefined){f.classList.add('born');f.style.setProperty('--b',s.born)}if(s.slide){t.style.transition='none';t.style.transform=`translate3d(${s.slide[0]*S}px,${s.slide[1]*S}px,${S*.04}px)`;slid.push(t)}f.appendChild(t);elById[s.id]=f;}
+        const t=document.createElement('div');t.className='tile';if(s.ch){const c=document.createElement('span');c.className='ch';c.textContent=s.ch;if(s.spin){c.style.transition='none';c.style.transform=`rotate(${s.spin}deg)`;spun.push(c)}t.appendChild(c)}if(s.born!==undefined){f.classList.add('born');f.style.setProperty('--b',s.born)}if(s.slide){t.style.transition='none';t.style.transform=`translate3d(${s.slide[0]*S}px,${s.slide[1]*S}px,${S*.04}px)`;slid.push(t)}f.appendChild(t);elById[s.id]=f;}
       else f.className='face';
       c.appendChild(f);
     }
@@ -602,9 +584,9 @@ function paintSel(){
   for(const id in elById)elById[id].classList.toggle('sel',ids.has(+id));
   const r=stage.getBoundingClientRect();
   /* the trail takes a colour that reads on each tile it crosses: dark on light stickers,
-     light on cobalt, yellow on wildcards; a thin halo in the opposite tone keeps it legible at seams */
+     light on cobalt; a thin halo in the opposite tone keeps it legible at seams */
   const INK='#0A0A0A',PAPER='#F2F2F2',YEL='#FFD60A';
-  const tone=s=>s.ch==='?'?[YEL,INK]:s.hue==='b'?[PAPER,INK]:[INK,PAPER];
+  const tone=s=>s.hue==='b'?[PAPER,INK]:[INK,PAPER];
   const pts=path.map(s=>{const b=elById[s.id].getBoundingClientRect();return {x:b.left+b.width/2-r.left,y:b.top+b.height/2-r.top,t:tone(s)}});
   const w=S*.15,h=w+S*.07;let defs='',halo='',core='',dots='';
   for(let i=1;i<pts.length;i++){
@@ -640,7 +622,7 @@ function hud(){
   if(!G.tray) G.tray=makeTray();
   const deal=G._deal;G._deal=false;const mid=(G.tray.length-1)/2;
   const glow=T&&T.step.wait==='place';
-  $('tray').innerHTML=G.tray.map((c,i)=>`<button class="tl${c==='?'?' wild':''}${deal?' deal':''}${glow&&(!T.step.trayPick||c===T.step.trayPick)?' coach-target':''}${picked===i?' picked':''}" style="--o:${(i-mid).toFixed(2)};--i:${i}" data-i="${i}" aria-label="${c==='?'?'Wildcard, any letter':'Letter '+c.toUpperCase()}">${c}</button>`).join('')+
+  $('tray').innerHTML=G.tray.map((c,i)=>`<button class="tl${deal?' deal':''}${glow&&(!T.step.trayPick||c===T.step.trayPick)?' coach-target':''}${picked===i?' picked':''}" style="--o:${(i-mid).toFixed(2)};--i:${i}" data-i="${i}" aria-label="${c==='?'?'Wildcard, any letter':'Letter '+c.toUpperCase()}">${c}</button>`).join('')+
     Array.from({length:Math.max(0,cfg.traySize-G.tray.length)},()=>'<span class="tray-empty"></span>').join('');
   $('found').innerHTML=made?G.found.map(f=>`<span class="w${f.nf>1?' cross':''}">${f.w}<b>+${f.c}</b></span>`).join(''):'<span class="none">No words yet</span>';
   lastHud={level:G.level,made,left};
@@ -881,12 +863,7 @@ function submit(){
   const word=path.map(s=>s.ch).join('');
   const used=path.slice();path=[];
   if(word.length<cfg.minLen){paintSel();preview('');if(word.length>1)preview(word,'bad',`words need ${cfg.minLen}+ letters`);return}
-  if(word.includes('?')){
-    const w2=resolveWild(word);
-    if(!w2){paintSel();preview(word,'bad','no unused word fits');return}
-    return accept(w2,used);
-  }
-  if(T&&T.step.target&&T.step.target!=='*'&&word!==T.step.target){paintSel();preview(word,'bad',`try ${T.step.target.toUpperCase()}`);return}
+  if(T&&T.step.target&&word!==T.step.target){paintSel();preview(word,'bad',`try ${T.step.target.toUpperCase()}`);return}
   if(!DICT.has(word)){paintSel();preview(word,'bad','not in the word list');return}
   if(G.found.some(f=>f.w===word)){paintSel();preview(word,'bad','already made');return}
   accept(word,used);
@@ -1210,12 +1187,10 @@ const TUT=[
   {text:'Trace across the letters to spell <b>CAT</b>.',lay:[['front',-1,0,'c'],['front',0,0,'a'],['front',1,0,'t']],target:'cat',hint:'trace'},
   {text:'Words can go diagonally and wrap over an edge. Spell <b>SUN</b>.',lay:[['front',0,0,'s'],['front',1,-1,'u'],['right',-1,-1,'n']],target:'sun',hint:'trace'},
   {text:'Use the <b>turn pad</b> to turn the cube and see another side. Tap an arrow or drag it.',lay:[],wait:'turn',el:'pad'},
-  {text:'Sometimes a word is a letter short. That\'s what your free letters are for. Tap the <b>G</b>, then tap the glowing square.',lay:[['front',-1,0,'d'],['front',0,0,'o']],drop:['front',1,0],tray:['g','e','r','?','s'],trayPick:'g',wait:'place'},
+  {text:'Sometimes a word is a letter short. That\'s what your free letters are for. Tap the <b>G</b>, then tap the glowing square.',lay:[['front',-1,0,'d'],['front',0,0,'o']],drop:['front',1,0],tray:['g','e','r','a','s'],trayPick:'g',wait:'place'},
   {text:'Now spell <b>DOG</b>.',target:'dog',hint:'trace'},
   {text:'Made a mistake? Tap <b>undo</b> to take the last move back.',wait:'undo',el:'undoBtn'},
   {text:'You get five free letters a level. Need others? <b>New letters</b> buys a fresh set with coins.',wait:'next',el:'trayReset'},
-  {text:'The <b>?</b> is a wildcard. It can be any letter. Tap it, then tap the gap.',lay:[['front',-1,0,'c'],['front',1,0,'t']],drop:['front',0,0],trayPick:'?',wait:'place'},
-  {text:'Now trace all three. The wildcard becomes whichever letter makes a word.',target:'*',path:[['front',-1,0],['front',0,0],['front',1,0]],hint:'trace'},
   {text:'Letters cut off from the rest can\'t be used. Tap <b>Collapse</b> to pull them together.',lay:[['front',-1,-1,'h'],['front',1,1,'i'],['right',1,1,'p']],wait:'collapse',el:'collapseBtn'},
   {text:'Clear every letter from the cube to finish a level. That\'s all there is to it.',end:true}
 ];
@@ -1292,7 +1267,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261026-014543';
+const BUILD='20261026-015105';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
