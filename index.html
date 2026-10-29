@@ -1302,7 +1302,21 @@ function accept(word,used){
   used.forEach((s,i)=>{const el=elById[s.id];if(!el) return;el.classList.add('going');
     setTimeout(()=>{el.classList.add('pop');letterBurst(el,i)},i*step)});
   paintSel();
-  setTimeout(()=>{if(isEndless())refill(used);else used.forEach(s=>s.ch=null);busy=false;render();faceFx.forEach(flashFace);progress()},reduce?0:(used.length-1)*step+230);
+  setTimeout(()=>{if(isEndless())refill(used);else used.forEach(s=>s.ch=null);busy=false;render();faceFx.forEach(flashFace);progress();
+    const t0=lastInput;setTimeout(()=>{if(lastInput===t0)autoTurn()},reduce?0:420)},reduce?0:(used.length-1)*step+230);
+}
+/* after a word, if the three faces in view have no letters left, turn the cube once toward the side
+   that brings the most letters into view. Skipped if the player touches anything in the meantime. */
+function autoTurn(){
+  if(!G||G.done||G.mode==='tutorial'||busy||!playing||path.length) return;
+  const inView=n=>VISIBLE.includes(key(n));
+  if(G.stickers.some(s=>s.ch&&inView(s.n))||!G.stickers.some(s=>s.ch)) return;
+  let best=null;
+  for(const k of [1,0]) for(const sg of [1,-1]){
+    const n=G.stickers.filter(s=>s.ch&&inView(rot(s.n,k,sg))).length;
+    if(n&&(!best||n>best.n)) best={k,sg,n};
+  }
+  if(best) turnCube(best.k,best.sg);
 }
 /* small particles fly out from a letter as it goes, tinted like the tile with a few white ones */
 function letterBurst(el,i){
@@ -1762,7 +1776,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261026-213723';
+const BUILD='20261029-234921';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
