@@ -438,12 +438,12 @@ html.calm .btn.primary::after,html.calm #tContinue::after,html.calm #tNew::after
       <li><b>Clear the cube</b>Empty every letter to finish the level and move on.</li>
       <li><b>Always clearable</b>Every cube starts out fully clearable. Collapse and tray letters help when you get stuck.</li>
       <li><b>Turn</b>Swipe anywhere in the empty space around the cube, or use the turn pad, to see other faces.</li>
-      <li><b>Free letters</b>Tap a tray letter, then tap a glowing empty square. New letters buys a fresh set.</li>
+      <li><b>Free letters</b>Tap a tray letter, then tap any square. On a taken square it replaces that letter. New letters buys a fresh set.</li>
       <li><b>Undo</b>Takes back the last word you made or the last tray letter you placed, coins and all. Collapse, ending early and new letters can't be undone.</li>
       <li><b>Collapse</b>Slides each face's letters together so stranded ones touch again.</li>
       <li><b>End early</b>When nothing is left to spell and only a few letters remain, pay coins to clear them and finish the level.</li>
       <li><b>No help</b>Clear the cube without ending early for an extra bonus.</li>
-      <li><b>Endless</b>Every word you make is replaced by new letters, so the cube never empties. Tap a tray letter, then tap any square to swap it in. Play as long as you like.</li>
+      <li><b>Endless</b>Every word you make is replaced by new letters, so the cube never empties. Play as long as you like.</li>
     </ul>
     <div class="tune" id="tune" hidden></div>
   </div>
@@ -1596,7 +1596,8 @@ stage.addEventListener('pointercancel',endGesture);
    Tapping anywhere else puts it back. */
 let picked=null;
 const tray=$('tray');
-const canTake=s=>(!s.ch||isEndless())&&(!T||T.dropId===s.id);
+/* free letters go on any square; on a taken one they replace the letter there */
+const canTake=s=>!T||T.dropId===s.id;
 function clearDrop(){for(const id in elById)elById[id].classList.remove('drop-ok');stage.classList.remove('picking')}
 function showSpots(){G.stickers.forEach(s=>{if(canTake(s)&&elById[s.id])elById[s.id].classList.add('drop-ok')})}
 function setPick(i){picked=i;clearDrop();if(i!=null){showSpots();stage.classList.add('picking');path=[];paintSel()}hud()}
@@ -1776,7 +1777,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261029-234921';
+const BUILD='20261101-231303';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
