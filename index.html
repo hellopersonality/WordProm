@@ -1654,7 +1654,7 @@ function swapFly(i,st){
   down.animate(frames(cube,slot,-1,1,kSlot,[cube.bg,cube.fg],[slot.bg,slot.fg],-360),opt);
   SFX.swap();HAP.word(3);
   /* where the paths cross, a little flash */
-  setTimeout(()=>sparkle((slot.x+cube.x)/2,(slot.y+cube.y)/2,16,'#fff'),720*(LIFT+(1-LIFT)*.5));
+  setTimeout(()=>sparkle((slot.x+cube.x)/2,(slot.y+cube.y)/2,16,'#fff'),opt.duration*(LIFT+(1-LIFT)*.5));
   a1.onfinish=()=>{
     busy=false;commitPlace(i,st,true);SFX.land();
     for(let k=0;k<4;k++) setTimeout(()=>sparkle(cube.x+(Math.random()-.5)*sz*1.4,cube.y+(Math.random()-.5)*sz*1.4,10+Math.random()*8),k*60);
@@ -1833,7 +1833,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261101-232456';
+const BUILD='20261101-232509';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
