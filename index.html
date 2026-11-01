@@ -261,9 +261,13 @@ html.endless #goalClear,html.endless #collapseBtn{display:none}
   50%{translate:0 calc(var(--o,0) * var(--o,0) * 1.3px - 3px);rotate:calc(var(--o,0) * 4deg + .8deg)}}
 .tray-t .tl.deal{animation:handdeal .5s cubic-bezier(.2,1.5,.4,1) both,hand 3.2s cubic-bezier(.37,0,.63,1) infinite;
   animation-delay:calc(var(--i,0) * 60ms),calc(var(--o,0) * -.55s)}
-/* a letter swapped off the cube drops into the tray */
-.tray-t .tl.swapin{animation:swapin .45s cubic-bezier(.2,1.6,.4,1) both,hand 3.2s cubic-bezier(.37,0,.63,1) infinite;animation-delay:0s,calc(var(--o,0) * -.55s)}
-@keyframes swapin{from{transform:translateY(-60px) scale(.6) rotate(-14deg);opacity:0}}
+/* swap: the flying letters, and the squash as each lands */
+.swfly{position:fixed;left:0;top:0;border-radius:20%;display:grid;place-items:center;font-family:var(--f);font-weight:800;text-transform:uppercase;line-height:1;z-index:2;
+  box-shadow:0 10px 22px rgba(0,0,0,.45),0 0 0 2px rgba(255,255,255,.35);will-change:transform}
+.tray-t .tl.swapin{animation:swapin .42s cubic-bezier(.3,1.6,.5,1) both,hand 3.2s cubic-bezier(.37,0,.63,1) infinite;animation-delay:0s,calc(var(--o,0) * -.55s)}
+@keyframes swapin{0%{transform:scale(1.3,.78)}45%{transform:scale(.9,1.12)}100%{transform:none}}
+.sticker.swland .tile{animation:swland .42s cubic-bezier(.3,1.6,.5,1)}
+@keyframes swland{0%{transform:translateZ(calc(var(--s)*.06)) scale(1.3,.8)}45%{transform:translateZ(calc(var(--s)*.03)) scale(.9,1.1)}100%{transform:none}}
 @keyframes handdeal{from{transform:translate(140px,-26px) rotate(28deg) scale(.7);opacity:0}}
 @media (hover:hover){ .tray-t .tl:hover{transform:translateY(-7px) scale(1.1);z-index:1} }
 .tray-t .tl:active{transform:translateY(-4px) scale(1.06)}
@@ -337,7 +341,7 @@ html.calm .bg{animation-duration:10s!important}
 @keyframes stamp{from{transform:scale(2.4) rotate(-14deg);opacity:0}}
 .tune .vol input{width:150px;padding:0;background:none;transform:none;accent-color:var(--yellow)}
 .tune .vol input:disabled{opacity:.4}
-html.calm .btn.primary::after,html.calm #tContinue::after,html.calm #tNew::after,html.calm .tool.ready::after,html.calm .drift,html.calm .sp,html.calm .bst,html.calm .lp{display:none!important}
+html.calm .btn.primary::after,html.calm #tContinue::after,html.calm #tNew::after,html.calm .tool.ready::after,html.calm .drift,html.calm .sp,html.calm .bst,html.calm .lp,html.calm .swfly{display:none!important}
 .swirl{position:absolute;left:0;top:0;width:100%;height:100%;z-index:-2;pointer-events:none;image-rendering:pixelated;image-rendering:crisp-edges;background:var(--ground)}
 .swirl.fixed{position:fixed}
 
@@ -776,6 +780,9 @@ const SFX=(()=>{
       if(faces>1) tone(hz(1047,chain),.28,{type:'sine',vol:.05,at:n*.058});
     },
     bad(){tone(150,.16,{type:'sawtooth',vol:.05,slide:.7})},
+    /* swap: one note rises while the other falls, as the letters cross */
+    swap(){tone(392,.5,{type:'triangle',vol:.07,at:.1,slide:2});tone(784,.5,{type:'triangle',vol:.07,at:.1,slide:.5});tone(1568,.12,{type:'sine',vol:.03,at:.4})},
+    land(){tone(523.25,.1,{type:'triangle',vol:.11});tone(783.99,.18,{type:'triangle',vol:.1,at:.06})},
     coin(){
       const now=performance.now();if(now-lastCoin<45) return;
       coinStep=now-lastCoin>260?0:Math.min(coinStep+1,8);lastCoin=now;
@@ -1606,9 +1613,54 @@ function showSpots(){G.stickers.forEach(s=>{if(canTake(s)&&elById[s.id])elById[s
 function setPick(i){picked=i;clearDrop();if(i!=null){showSpots();stage.classList.add('picking');path=[];paintSel()}hud()}
 function placeLetter(i,st){
   const ch=G.tray[i];picked=null;clearDrop();
-  /* on a taken square the two letters trade places: the cube's letter takes the free letter's spot in the tray */
-  const swap=!!st.ch;pushUndo({t:'p',id:st.id,old:st.ch,ch,i});if(swap)G.tray[i]=st.ch;else G.tray.splice(i,1);st.ch=ch;st.born=0;G.lettersAdded++;
-  G._swapIn=swap?i:null;render();tutEvent('place');preview(ch,'ok',swap?`swapped · ${G.tray[i].toUpperCase()} to tray`:G.tray.length?`placed · ${G.tray.length} left`:'placed · tray empty');status();save();
+  const swap=!!st.ch;
+  if(swap&&!reduce&&elById[st.id]&&$('tray').querySelector(`.tl[data-i="${i}"]`)){swapFly(i,st);return}
+  commitPlace(i,st);
+}
+/* on a taken square the two letters trade places: the cube's letter takes the free letter's spot in the tray */
+function commitPlace(i,st,flown){
+  const ch=G.tray[i],swap=!!st.ch;
+  pushUndo({t:'p',id:st.id,old:st.ch,ch,i});if(swap)G.tray[i]=st.ch;else G.tray.splice(i,1);st.ch=ch;if(!flown)st.born=0;G.lettersAdded++;
+  G._swapIn=swap?i:null;render();
+  if(flown&&elById[st.id]){const el=elById[st.id];el.classList.add('swland');setTimeout(()=>el.classList.remove('swland'),450)}
+  tutEvent('place');preview(ch,'ok',swap?`swapped · ${G.tray[i].toUpperCase()} to tray`:G.tray.length?`placed · ${G.tray.length} left`:'placed · tray empty');status();save();
+}
+/* The swap moment: both letters lift, then fly to each other's spot on opposite arcs so they visibly
+   pass one another, recolouring on the way (tray paper <-> sticker colour). They land with a squash. */
+function swapFly(i,st){
+  busy=true;path=[];paintSel();
+  const sEl=elById[st.id],tile=sEl.querySelector('.tile'),chEl=tile.querySelector('.ch'),tb=$('tray').querySelector(`.tl[data-i="${i}"]`);
+  const tr=tile.getBoundingClientRect(),br=tb.getBoundingClientRect(),cs=getComputedStyle(tile),bs=getComputedStyle(tb);
+  const cube={x:tr.left+tr.width/2,y:tr.top+tr.height/2,w:Math.max(30,Math.min(tr.width,tr.height)*.92),bg:cs.backgroundColor,fg:cs.color};
+  const slot={x:br.left+br.width/2,y:br.top+br.height/2,w:br.width,h:br.height,bg:bs.backgroundColor,fg:bs.color};
+  const sz=cube.w,fs=Math.round(sz*.54);
+  const mk=(txt,bg,fg)=>{const d=document.createElement('div');d.className='swfly';d.textContent=txt;
+    d.style.cssText=`width:${sz}px;height:${sz}px;margin:${-sz/2}px 0 0 ${-sz/2}px;font-size:${fs}px;background:${bg};color:${fg}`;$('fx').appendChild(d);return d};
+  const up=mk(G.tray[i],slot.bg,slot.fg),down=mk(st.ch,cube.bg,cube.fg);
+  chEl&&(chEl.style.opacity='0');tb.style.opacity='0';
+  const dx=cube.x-slot.x,dy=cube.y-slot.y,len=Math.hypot(dx,dy)||1,nx=-dy/len,ny=dx/len,bow=Math.min(110,len*.32);
+  const kSlot=slot.w/sz,LIFT=.16,N=10;
+  function frames(a,b,side,s0,s1,c0,c1,spin){
+    const cx=(a.x+b.x)/2+nx*bow*side,cy=(a.y+b.y)/2+ny*bow*side,f=[];
+    f.push({offset:0,transform:`translate(${a.x}px,${a.y}px) scale(${s0}) rotate(0deg)`,background:c0[0],color:c0[1]});
+    f.push({offset:LIFT,transform:`translate(${a.x}px,${a.y-10}px) scale(${s0*1.18}) rotate(${-spin*.08}deg)`,background:c0[0],color:c0[1],easing:'cubic-bezier(.45,0,.4,1)'});
+    for(let k=1;k<=N;k++){const t=k/N,u=1-t,x=u*u*a.x+2*u*t*cx+t*t*b.x,y=u*u*(a.y-10)+2*u*t*cy+t*t*b.y,
+      sc=s0+(s1-s0)*t+Math.sin(t*Math.PI)*.35;
+      f.push({offset:LIFT+(1-LIFT)*t,transform:`translate(${x}px,${y}px) scale(${sc}) rotate(${spin*t}deg)`,...(t>=.5?{background:c1[0],color:c1[1]}:{background:c0[0],color:c0[1]})})}
+    return f;
+  }
+  const opt={duration:820,easing:'linear',fill:'forwards'};
+  const a1=up.animate(frames(slot,cube,1,kSlot,1,[slot.bg,slot.fg],[cube.bg,cube.fg],360),opt);
+  down.animate(frames(cube,slot,-1,1,kSlot,[cube.bg,cube.fg],[slot.bg,slot.fg],-360),opt);
+  SFX.swap();HAP.word(3);
+  /* where the paths cross, a little flash */
+  setTimeout(()=>sparkle((slot.x+cube.x)/2,(slot.y+cube.y)/2,16,'#fff'),720*(LIFT+(1-LIFT)*.5));
+  a1.onfinish=()=>{
+    busy=false;commitPlace(i,st,true);SFX.land();
+    for(let k=0;k<4;k++) setTimeout(()=>sparkle(cube.x+(Math.random()-.5)*sz*1.4,cube.y+(Math.random()-.5)*sz*1.4,10+Math.random()*8),k*60);
+    sparkle(slot.x,slot.y-slot.h*.4,12);
+    requestAnimationFrame(()=>{up.remove();down.remove()});
+  };
 }
 tray.addEventListener('click',e=>{
   const b=e.target.closest('.tl');if(!b||!playing||busy||G.done) return;
@@ -1781,7 +1833,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261101-232029';
+const BUILD='20261101-232456';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
