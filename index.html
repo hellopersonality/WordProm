@@ -261,6 +261,9 @@ html.endless #goalClear,html.endless #collapseBtn{display:none}
   50%{translate:0 calc(var(--o,0) * var(--o,0) * 1.3px - 3px);rotate:calc(var(--o,0) * 4deg + .8deg)}}
 .tray-t .tl.deal{animation:handdeal .5s cubic-bezier(.2,1.5,.4,1) both,hand 3.2s cubic-bezier(.37,0,.63,1) infinite;
   animation-delay:calc(var(--i,0) * 60ms),calc(var(--o,0) * -.55s)}
+/* a letter swapped off the cube drops into the tray */
+.tray-t .tl.swapin{animation:swapin .45s cubic-bezier(.2,1.6,.4,1) both,hand 3.2s cubic-bezier(.37,0,.63,1) infinite;animation-delay:0s,calc(var(--o,0) * -.55s)}
+@keyframes swapin{from{transform:translateY(-60px) scale(.6) rotate(-14deg);opacity:0}}
 @keyframes handdeal{from{transform:translate(140px,-26px) rotate(28deg) scale(.7);opacity:0}}
 @media (hover:hover){ .tray-t .tl:hover{transform:translateY(-7px) scale(1.1);z-index:1} }
 .tray-t .tl:active{transform:translateY(-4px) scale(1.06)}
@@ -438,7 +441,7 @@ html.calm .btn.primary::after,html.calm #tContinue::after,html.calm #tNew::after
       <li><b>Clear the cube</b>Empty every letter to finish the level and move on.</li>
       <li><b>Always clearable</b>Every cube starts out fully clearable. Collapse and tray letters help when you get stuck.</li>
       <li><b>Turn</b>Swipe anywhere in the empty space around the cube, or use the turn pad, to see other faces.</li>
-      <li><b>Free letters</b>Tap a tray letter, then tap any square. On a taken square it replaces that letter. New letters buys a fresh set.</li>
+      <li><b>Free letters</b>Tap a tray letter, then tap any square. On a taken square the two letters swap, so the cube's letter goes to your tray. New letters buys a fresh set.</li>
       <li><b>Undo</b>Takes back the last word you made or the last tray letter you placed, coins and all. Collapse, ending early and new letters can't be undone.</li>
       <li><b>Collapse</b>Slides each face's letters together so stranded ones touch again.</li>
       <li><b>End early</b>When nothing is left to spell and only a few letters remain, pay coins to clear them and finish the level.</li>
@@ -708,9 +711,9 @@ function hud(){
   {const free=!!(T&&T.step.freeReset),rs=$('trayResetSub');rs.textContent=free?'free':coinsTxt(cfg.trayResetCost);rs.classList.toggle('free',free)}
   {const u=$('undoBtn'),n=(G.undo||[]).length;u.disabled=!n||G.done;u.title=n?`Undo the last ${G.undo[n-1].t==='w'?'word':'placed letter'}${cfg.undoCost?` · ${cfg.undoCost} coins`:''}`:'Nothing to undo'}
   if(!G.tray) G.tray=makeTray();
-  const deal=G._deal;G._deal=false;const mid=(G.tray.length-1)/2;
+  const deal=G._deal;G._deal=false;const swapIn=G._swapIn;G._swapIn=null;const mid=(G.tray.length-1)/2;
   const glow=T&&T.step.wait==='place';
-  $('tray').innerHTML=G.tray.map((c,i)=>`<button class="tl${deal?' deal':''}${glow&&(!T.step.trayPick||c===T.step.trayPick)?' coach-target':''}${picked===i?' picked':''}" style="--o:${(i-mid).toFixed(2)};--i:${i}" data-i="${i}" aria-label="${c==='?'?'Wildcard, any letter':'Letter '+c.toUpperCase()}">${c}</button>`).join('')+
+  $('tray').innerHTML=G.tray.map((c,i)=>`<button class="tl${deal?' deal':''}${glow&&(!T.step.trayPick||c===T.step.trayPick)?' coach-target':''}${picked===i?' picked':''}${swapIn===i?' swapin':''}" style="--o:${(i-mid).toFixed(2)};--i:${i}" data-i="${i}" aria-label="${c==='?'?'Wildcard, any letter':'Letter '+c.toUpperCase()}">${c}</button>`).join('')+
     Array.from({length:Math.max(0,cfg.traySize-G.tray.length)},()=>'<span class="tray-empty"></span>').join('');
   $('found').innerHTML=made?G.found.map(f=>`<span class="w${f.nf>1?' cross':''}">${f.w}<b>+${f.c}</b></span>`).join(''):'<span class="none">No words yet</span>';
   lastHud={level:G.level,made,left};
@@ -1264,7 +1267,7 @@ function undo(){
     G.coins-=rec.c+(rec.fb||0);G.earned-=rec.c;if(rec.fb){G.faceBonus=(G.faceBonus||0)-rec.fb;G.facesPaid=rec.paidBefore}G.found.pop();G.solution=rec.sol;
     preview(rec.w,'bad',`undone · −${rec.c}`);
   } else {
-    const s=G.stickers[rec.id];s.ch=rec.old;s.born=0;G.lettersAdded--;G.tray.splice(rec.i,0,rec.ch);
+    const s=G.stickers[rec.id];s.ch=rec.old;s.born=0;G.lettersAdded--;if(rec.old)G.tray[rec.i]=rec.ch;else G.tray.splice(rec.i,0,rec.ch);
     preview(rec.ch,'bad','back in the tray');
   }
   render();juice($('coinTile'));status();save();tutEvent('undo');
@@ -1603,8 +1606,9 @@ function showSpots(){G.stickers.forEach(s=>{if(canTake(s)&&elById[s.id])elById[s
 function setPick(i){picked=i;clearDrop();if(i!=null){showSpots();stage.classList.add('picking');path=[];paintSel()}hud()}
 function placeLetter(i,st){
   const ch=G.tray[i];picked=null;clearDrop();
-  const swap=!!st.ch;pushUndo({t:'p',id:st.id,old:st.ch,ch,i});st.ch=ch;st.born=0;G.lettersAdded++;G.tray.splice(i,1);
-  render();tutEvent('place');preview(ch,'ok',swap?(G.tray.length?`swapped · ${G.tray.length} left`:'swapped · tray empty'):G.tray.length?`placed · ${G.tray.length} left`:'placed · tray empty');status();save();
+  /* on a taken square the two letters trade places: the cube's letter takes the free letter's spot in the tray */
+  const swap=!!st.ch;pushUndo({t:'p',id:st.id,old:st.ch,ch,i});if(swap)G.tray[i]=st.ch;else G.tray.splice(i,1);st.ch=ch;st.born=0;G.lettersAdded++;
+  G._swapIn=swap?i:null;render();tutEvent('place');preview(ch,'ok',swap?`swapped · ${G.tray[i].toUpperCase()} to tray`:G.tray.length?`placed · ${G.tray.length} left`:'placed · tray empty');status();save();
 }
 tray.addEventListener('click',e=>{
   const b=e.target.closest('.tl');if(!b||!playing||busy||G.done) return;
@@ -1777,7 +1781,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261101-231303';
+const BUILD='20261101-232029';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
