@@ -299,6 +299,24 @@ html.endless #goalClear,html.endless #collapseBtn{display:none}
 @keyframes spot{0%,100%{box-shadow:inset 0 0 0 calc(var(--s) * .03) rgba(255,214,10,.35)}50%{box-shadow:inset 0 0 0 calc(var(--s) * .07) var(--yellow)}}
 .coach-target{position:relative;animation:beckon 1.2s ease-in-out infinite!important}
 @keyframes beckon{0%,100%{box-shadow:0 0 0 0 rgba(255,214,10,.0)}50%{box-shadow:0 0 0 5px rgba(255,214,10,.85)}}
+/* add to home screen: menu button and the prompt card */
+.mbtn.home{background:#161616;color:var(--paper);box-shadow:inset 0 0 0 2px #2E2E2E}
+.mbtn.home small{opacity:.55}
+#install{z-index:43}
+.card.inst{padding:8px;gap:8px}
+.inst-top{display:flex;gap:14px;align-items:center;background:var(--yellow);color:var(--ink);border-radius:20px;padding:14px}
+.inst-top h2{font-size:22px}
+.inst-top p{margin:6px 0 0;font-size:14px;font-weight:600;line-height:1.3}
+.inst-icon{width:64px;height:64px;border-radius:15px;flex:none;box-shadow:0 6px 14px rgba(0,0,0,.3);animation:instBob 2.4s ease-in-out infinite}
+@keyframes instBob{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-4px) rotate(3deg)}}
+.inst-steps{list-style:none;margin:0;padding:0;display:grid;gap:6px;counter-reset:st}
+.inst-steps li{counter-increment:st;display:flex;align-items:center;gap:12px;background:#161616;border-radius:16px;padding:12px 14px;font-size:15px;font-weight:600;line-height:1.3}
+.inst-steps li::before{content:counter(st);flex:none;width:26px;height:26px;border-radius:9px;background:var(--paper);color:var(--ink);display:grid;place-items:center;font-weight:800;font-size:14px}
+.inst-steps b{font-weight:800;color:var(--yellow)}
+.inst-steps .ic{display:inline-grid;place-items:center;vertical-align:-6px;width:26px;height:26px;border-radius:8px;background:#2A2A2A;margin:0 2px}
+.inst-steps .ic svg{width:16px;height:16px}
+.inst-note{margin:0;padding:2px 10px;font-size:13px;font-weight:600;color:var(--fog);line-height:1.35}
+.btn.ghost{background:transparent;color:var(--fog)}
 /* update banner: floats just under the top bar, above everything but the effects layer */
 .update{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 70px);transform:translateX(-50%);z-index:44;display:flex;align-items:center;gap:8px;
   background:rgba(10,10,10,.95);border-radius:18px;padding:6px 6px 6px 14px;font-weight:700;font-size:14px;white-space:nowrap;box-shadow:0 12px 30px rgba(0,0,0,.45);animation:deal .45s cubic-bezier(.2,1.5,.4,1) both}
@@ -418,6 +436,7 @@ html.calm .btn.primary::after,html.calm #tContinue::after,html.calm #tNew::after
       <button class="mbtn r" id="tEndless" style="--i:2">Endless <small id="tEndlessSub">letters never run out</small></button>
       <button class="mbtn s" id="tHow" style="--i:3">Tutorial</button>
       <button class="mbtn m" id="tSettings" style="--i:4">Settings</button>
+      <button class="mbtn home" id="tInstall" style="--i:5" hidden>Add to Home Screen <small>play like an app</small></button>
     </div>
   </div>
 </div>
@@ -429,6 +448,7 @@ html.calm .btn.primary::after,html.calm #tContinue::after,html.calm #tNew::after
     <button class="mbtn m" id="pSettings" style="--i:2">Settings</button>
     <button class="mbtn r" id="pNewRun" style="--i:3">New endless run <small id="pNewRunSub"></small></button>
     <button class="mbtn p" id="pMenu" style="--i:4">Main menu</button>
+    <button class="mbtn home" id="pInstall" style="--i:5" hidden>Add to Home Screen</button>
   </div>
 </div>
 
@@ -453,6 +473,18 @@ html.calm .btn.primary::after,html.calm #tContinue::after,html.calm #tNew::after
       <li><b>Endless</b>Every word you make is replaced by new letters, so the cube never empties. Play as long as you like.</li>
     </ul>
     <div class="tune" id="tune" hidden></div>
+  </div>
+</div>
+<div class="overlay" id="install" hidden>
+  <div class="card inst" role="dialog" aria-modal="true" aria-labelledby="instTitle">
+    <div class="inst-top">
+      <img class="inst-icon" src="icon-192.png" alt="" width="64" height="64">
+      <div><h2 id="instTitle">Put Wubix on your home screen</h2><p>Opens full screen like an app, one tap away. Works offline too.</p></div>
+    </div>
+    <ol class="inst-steps" id="instSteps" hidden></ol>
+    <p class="inst-note" id="instNote" hidden></p>
+    <button class="btn primary" id="instGo">Add to Home Screen</button>
+    <button class="btn ghost" id="instLater">Not now</button>
   </div>
 </div>
 <div class="update" id="update" role="status" hidden><span>A new version is ready</span><button class="btn primary" id="updateGo">Update</button><button class="x" id="updateX" aria-label="Later">&times;</button></div>
@@ -1297,7 +1329,7 @@ function accept(word,used){
   }
   const fb=nNew*cfg.faceBonus;
   const pts=used.map(st=>elById[st.id]).filter(Boolean).map(centerOf);
-  G.coins+=c+fb;G.earned+=c;G.found.push({w:word,c,nf});G.undo[G.undo.length-1].c=c;
+  G.coins+=c+fb;G.earned+=c;G.found.push({w:word,c,nf});if(isEndless()&&G.found.length%20===0)INST.nudge();G.undo[G.undo.length-1].c=c;
   if(nNew){G.faceBonus=(G.faceBonus||0)+fb;G.facesPaid=paidBefore+nNew;Object.assign(G.undo[G.undo.length-1],{fb,paidBefore})}
   preview(word,'ok',[nf>1?`${nf} faces`:'',nNew?`face cleared${fb?` +${fb}`:''}`:''].filter(Boolean).join(' · '));
   if(word.length>=6||nNew){const cx=pts.reduce((a,q)=>a+q[0],0)/pts.length,cy=pts.reduce((a,q)=>a+q[1],0)/pts.length;for(let k=0;k<(nNew?5:3);k++) setTimeout(()=>sparkle(cx+(Math.random()-.5)*110,cy+(Math.random()-.5)*80,12+Math.random()*12),k*90)}
@@ -1684,7 +1716,7 @@ $('trayReset').onclick=()=>{
 };
 $('collapseBtn').onclick=()=>{if(!held($('collapseBtn')))collapse()};
 $('coinTile').onclick=()=>toast(`${(G?G.coins:0).toLocaleString()} coins`);
-$('nextBtn').onclick=()=>{newLevel(G.failed?G.level:G.level+1,G.coins);size();render(true);status();save();introSpin()};
+$('nextBtn').onclick=()=>{const won=!G.failed;newLevel(G.failed?G.level:G.level+1,G.coins);size();render(true);status();save();introSpin();if(won)INST.nudge()};
 document.addEventListener('keydown',e=>{
   if(e.target.closest&&e.target.closest('input')) return;
   if(e.key==='Escape'){back();return}
@@ -1833,7 +1865,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261101-232509';
+const BUILD='20261103-021924';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
@@ -1933,6 +1965,80 @@ $('pHow').onclick=()=>openInfo('play');
 $('pSettings').onclick=()=>openInfo('tune');
 $('pMenu').onclick=showTitle;
 $('pause').addEventListener('click',e=>{if(e.target===$('pause'))resume()});
+/* ---------- add to home screen ----------
+   Android and desktop Chrome/Edge hand us an install event; the Install button replays the browser's
+   own dialog. iPhones can't be installed from a page, so they get a short guide to Share > Add to Home
+   Screen. Nothing shows once the game is already running from the home screen. The prompt offers
+   itself after a level is cleared (or 20 words into an endless run), at most three times. */
+const INST=(()=>{
+  const ua=navigator.userAgent;
+  const ios=/iP(hone|ad|od)/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1);
+  const android=/Android/.test(ua);
+  const inApp=/FBAN|FBAV|Instagram|Twitter|Line\/|Snapchat|TikTok|musical_ly|BytedanceWebview|GSA\//.test(ua);
+  const standalone=()=>matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches||navigator.standalone===true;
+  let deferred=null,st={n:0,done:false,last:0};
+  try{Object.assign(st,JSON.parse(localStorage.getItem('twistword-install')||'{}'))}catch(e){}
+  const keep=()=>{try{localStorage.setItem('twistword-install',JSON.stringify(st))}catch(e){}};
+  /* a phone browser can always add it (by hand if need be); a desktop only once Chrome offers install */
+  const can=()=>!standalone()&&(deferred||ios||android);
+  function sync(){const on=!!can();$('tInstall').hidden=!on;$('pInstall').hidden=!on}
+  addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;sync()});
+  addEventListener('appinstalled',()=>{deferred=null;st.done=true;keep();sync();close();toast('Wubix is on your home screen')});
+  const SHARE='<span class="ic"><svg viewBox="0 0 20 20" fill="none" stroke="#5CB8FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12.5V2.5M6.5 6 10 2.5 13.5 6"/><path d="M6 8.5H4.5v9h11v-9H14"/></svg></span>';
+  const MORE='<span class="ic"><svg viewBox="0 0 20 20" fill="#F2F2F2"><circle cx="4.5" cy="10" r="1.7"/><circle cx="10" cy="10" r="1.7"/><circle cx="15.5" cy="10" r="1.7"/></svg></span>';
+  const ADD='<span class="ic"><svg viewBox="0 0 20 20" fill="none" stroke="#F2F2F2" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="14" height="14" rx="3.5"/><path d="M10 6.5v7M6.5 10h7"/></svg></span>';
+  const KEBAB='<span class="ic"><svg viewBox="0 0 20 20" fill="#F2F2F2"><circle cx="10" cy="4.5" r="1.7"/><circle cx="10" cy="10" r="1.7"/><circle cx="10" cy="15.5" r="1.7"/></svg></span>';
+  function guide(){
+    const steps=$('instSteps'),note=$('instNote');let li=[],n='';
+    if(inApp){
+      li=[`Tap ${MORE} or ${SHARE} in this app and choose <b>Open in browser</b>`,'Then come back to this screen there'];
+      n='Apps like Instagram and X open links in their own viewer, which can\'t add to the home screen.';
+    } else if(ios){
+      const safari=!/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
+      li=safari?[`Tap ${MORE} at the bottom, then ${SHARE} <b>Share</b>`,`Scroll down and tap ${ADD} <b>Add to Home Screen</b>`,'Tap <b>Add</b>. Wubix appears with your apps']
+               :[`Tap ${SHARE} <b>Share</b> next to the address bar`,`Tap ${ADD} <b>Add to Home Screen</b>`,'Tap <b>Add</b>. Wubix appears with your apps'];
+      if(safari) n='On some iPhones the Share button sits right in the toolbar, so skip the first tap.';
+    } else {
+      li=[`Tap the browser menu ${KEBAB}`,`Tap ${ADD} <b>Add to Home screen</b> or <b>Install app</b>`,'Confirm. Wubix appears with your apps'];
+    }
+    steps.innerHTML=li.map(x=>`<li><span>${x}</span></li>`).join('');steps.hidden=false;
+    note.textContent=n;note.hidden=!n;
+    $('instGo').textContent='Got it';$('instGo').dataset.mode='done';
+  }
+  function open(auto){
+    if(!can()) return false;
+    $('instSteps').hidden=true;$('instNote').hidden=true;
+    if(deferred){$('instGo').textContent='Add to Home Screen';$('instGo').dataset.mode='native'}else guide();
+    $('instLater').hidden=false;$('instLater').textContent=auto?'Not now':'Close';
+    $('install').hidden=false;if(auto){st.n++;keep()}
+    return true;
+  }
+  function close(){$('install').hidden=true}
+  $('instGo').onclick=async()=>{
+    if($('instGo').dataset.mode==='native'&&deferred){
+      const e=deferred;deferred=null;
+      try{await e.prompt();const r=await e.userChoice;if(r&&r.outcome==='accepted'){st.done=true;keep();close()}else close()}catch(_){guide()}
+      sync();return;
+    }
+    st.done=true;keep();close();   /* followed the guide; stop offering it automatically */
+  };
+  $('instLater').onclick=close;
+  $('install').addEventListener('click',e=>{if(e.target===$('install'))close()});
+  $('tInstall').onclick=()=>open(false);
+  $('pInstall').onclick=()=>{$('pause').hidden=true;open(false)};
+  sync();
+  return {
+    /* auto offer: phones and tablets only, never during the tutorial, at most three times, and a few
+       levels apart (the 1st, 3rd and 6th chance) */
+    nudge(){
+      if(st.done||st.n>=3||!coarse||!can()||!G||G.mode==='tutorial') return;
+      const at=[1,3,6][st.n];st.chances=(st.chances||0)+1;keep();
+      if(st.chances<at) return;
+      setTimeout(()=>{if(playing&&$('pause').hidden&&$('info').hidden&&$('sheet').hidden)open(true)},reduce?200:900);
+    },
+    get standalone(){return standalone()}
+  };
+})();
 $('wordsPill').onclick=()=>{$('foundPanel').hidden=!$('foundPanel').hidden};
 /* save when the tab is hidden or closed, like an app going to the background */
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&playing)save()});
