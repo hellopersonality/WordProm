@@ -1815,10 +1815,10 @@ const TUT=[
   {text:'The G went to your tray to use later. Now spell <b>BUS</b>.',target:'bus',hint:'trace'},
   {text:'Changed your mind? Tap <b>undo</b> to take back your last word.',reveal:['undo'],wait:'undo',el:'undoBtn',hint:'tap'},
   {text:'Tap <b>New letters</b> to trade your free letters for a fresh set. It\'s free this time.',reveal:['reset'],wait:'reset',el:'trayReset',hint:'tap'},
-  {text:'After this, <b>New letters</b> costs coins. You earn coins by making words.',reveal:['coins'],wait:'next',el:'coinTile',showCost:true},
+  {text:'Words earn coins. After this, <b>New letters</b> costs coins.',reveal:['coins'],show:'coins',auto:3900},
   {text:'Letters cut off from the others can\'t be used. Tap <b>Collapse</b> to slide them together.',reveal:['collapse'],lay:[['front',-1,-1,'h'],['front',1,1,'i'],['right',1,1,'p']],wait:'collapse',el:'collapseBtn',hint:'tap'},
   {text:'Now they touch. Spell <b>HIP</b> to clear the cube.',target:'hip',hint:'trace'},
-  {text:'Cube cleared! Clearing every letter finishes a level, and <b>Left</b> shows how many remain. You\'re ready.',reveal:['left','words','level'],el:'goalClear',turn:true,end:true}
+  {text:'Cube cleared! Clearing every letter finishes a level, and <b>Left</b> shows how many remain. You\'re ready.',reveal:['left','words','level'],el:'coachGo',turn:true,end:true,hint:'tap'}
 ];
 /* interface parts the tutorial hands out one by one */
 const TUT_UI={pad:'pad',tray:'tray',undo:'undoBtn',reset:'trayReset',coins:'coinTile',collapse:'collapseBtn',left:'goalClear',words:'wordsPill',level:'lvlPill'};
@@ -1871,7 +1871,32 @@ function tutStep(i){
   [...$('coachDots').children].forEach((d,k)=>{d.className=k<i?'done':k===i?'on':''});
   $('coachSkip').hidden=!!st.end;$('coachGo').hidden=!st.end;$('coachNext').hidden=st.wait!=='next';
   hud();if(st.showCost)juice($('trayResetSub'));
+  if(st.show==='coins') tutCoins(st);
+  /* steps with nothing to do play out and move on by themselves */
+  if(st.auto) setTimeout(()=>{if(T&&T.step===st)tutStep(Math.min(TUT.length-1,i+1))},st.auto);
   T.hintAt=performance.now()+(i===0?900:700);
+}
+/* shown, not told: the coin counter arrives empty and coins fly into it from the letters on the cube;
+   then a few fly from the counter to New letters, whose price tag pulses: words earn, that button spends */
+function tutCoins(st){
+  shown=0;drawCoins();
+  setTimeout(()=>{
+    if(!T||T.step!==st) return;
+    const pts=G.stickers.filter(s=>s.ch&&elById[s.id]).map(s=>centerOf(elById[s.id]));
+    spawnCoins(pts.length?pts:[centerOf($('stage'))],G.coins);
+  },450);
+  setTimeout(()=>{
+    if(!T||T.step!==st||reduce) return;
+    const a=$('coinTile').getBoundingClientRect(),b=$('trayReset').getBoundingClientRect(),fx=$('fx');
+    const ax=a.left+18,ay=a.top+a.height/2,bx=b.left+b.width/2,by=b.top+b.height*.7;
+    $('trayReset').classList.add('coach-target');
+    for(let k=0;k<5;k++){
+      const el=document.createElement('div');el.className='cp';fx.appendChild(el);
+      const mx=(ax+bx)/2+(k-2)*22,my=Math.min(ay,by)+(by-ay)*.35;
+      el.animate([{transform:`translate(${ax}px,${ay}px) scale(.3)`},{transform:`translate(${mx}px,${my}px) scale(1)`,offset:.45},{transform:`translate(${bx}px,${by}px) scale(.6)`}],
+        {duration:820,delay:k*90,easing:'cubic-bezier(.45,0,.4,1)',fill:'both'}).onfinish=()=>{el.remove();juice($('trayResetSub'));if(k===4){SFX.coin()}};
+    }
+  },2100);
 }
 function tutEvent(type){
   if(!T||!G||G.mode!=='tutorial') return;
@@ -1918,7 +1943,7 @@ function fingerLoop(){
     const tl=$('tray').querySelector('.tl');
     if(picked==null&&tl) pts.push(centerOf(tl));
     if(T.dropId!=null&&at(T.dropId)) pts.push(at(T.dropId));}
-  if(st.hint==='tap'&&st.el){taps=true;pts=[centerOf($(st.el))]}
+  if(st.hint==='tap'&&st.el&&!$(st.el).hidden){taps=true;pts=[centerOf($(st.el))]}
   if(!pts.length){finger.classList.remove('on');return}
   let x,y,on=true,press=false;
   if(taps){
@@ -1943,7 +1968,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261104-023054';
+const BUILD='20261104-023624';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
