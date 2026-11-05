@@ -48,6 +48,41 @@ html.night{
   --raise:#22102F; --raise2:#3D2F46; --dial:#2B1C35; --scrim:14,4,23; --off-bg:#1D0B2B; --off-fg:#5E4C6B; --dots:#3D2F46; --knob-ring:#170722;
 }
 html.night .mod{box-shadow:inset 0 0 0 1px #2B1C35}
+/* Dark mode surfaces: nothing bright and solid. Every coloured part becomes a dark fill faintly tinted
+   with its colour, a thin ring of that colour, and white text, like coloured glyphs on a dark ground.
+   --a is the part's accent. */
+html.night .pill.lvl{--a:var(--orange)} html.night .pill.words{--a:var(--sky)} html.night .pill.coins{--a:var(--yellow)}
+html.night .pill.undo{--a:var(--mist)}
+html.night .tool.collapse{--a:var(--orange)} html.night .tool.renew{--a:var(--red)}
+html.night .tl{--a:var(--mist)}
+html.night .btn{--a:var(--mist)} html.night .btn.primary{--a:var(--yellow)}
+html.night .found .w:nth-child(4n+1){--a:var(--sky)} html.night .found .w:nth-child(4n+2){--a:var(--orange)} html.night .found .w:nth-child(4n+3){--a:var(--yellow)} html.night .found .w:nth-child(4n){--a:var(--mist)}
+html.night .card .ttl{--a:var(--yellow)} html.night .card.fail .ttl{--a:var(--red)} html.night .perf .tier{--a:var(--yellow)}
+html.night .mbtn.y{--a:var(--yellow)} html.night .mbtn.p{--a:var(--mist)} html.night .mbtn.s{--a:var(--sky)} html.night .mbtn.m{--a:var(--cobalt)} html.night .mbtn.r{--a:var(--red)}
+html.night .tabs button[aria-selected="true"]{--a:var(--mist)} html.night .tabs .x{--a:var(--red)}
+html.night .rules li:nth-child(6n+1){--a:var(--sky)} html.night .rules li:nth-child(6n+2){--a:var(--orange)} html.night .rules li:nth-child(6n+3){--a:var(--yellow)}
+html.night .rules li:nth-child(6n+4){--a:var(--mist)} html.night .rules li:nth-child(6n+5){--a:var(--cobalt)} html.night .rules li:nth-child(6n){--a:var(--red)}
+html.night .inst-top{--a:var(--yellow)} html.night .toast{--a:var(--mist)} html.night .preview .tag{--a:var(--yellow)}
+html.night .logo span:nth-child(1){--a:var(--red)} html.night .logo span:nth-child(2){--a:var(--yellow)} html.night .logo span:nth-child(3){--a:var(--sky)}
+html.night .logo span:nth-child(4){--a:var(--orange)} html.night .logo span:nth-child(5){--a:var(--cobalt)}
+html.night :is(.pill.lvl,.pill.words,.pill.coins,.pill.undo,.tool.collapse,.tool.renew,.tl,.btn,.found .w,.card .ttl,.perf .tier,.mbtn.y,.mbtn.p,.mbtn.s,.mbtn.m,.mbtn.r,
+  .tabs button[aria-selected="true"],.tabs .x,.rules li,.inst-top,.toast,.preview .tag,.logo span){
+  background:color-mix(in srgb,var(--a) 13%,#1A0927)!important;color:#FFFFFF!important;
+  box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--a) 80%,transparent)}
+/* labels, icons and badges take the accent itself */
+html.night .pill.stat .tag{color:var(--a);opacity:1}
+html.night .tool svg{color:var(--a)}
+html.night .mbtn small{color:var(--a);opacity:.9}
+html.night .logo span{color:var(--a)!important}
+html.night .perf .tier{color:var(--yellow)!important}
+html.night .inst-steps li::before{background:transparent;color:var(--yellow);box-shadow:inset 0 0 0 2px var(--yellow)}
+html.night .pill.undo:disabled{background:var(--off-bg)!important;color:var(--off-fg)!important;box-shadow:none}
+html.night .pill.coins.spend{animation:none}
+html.night .tray-t .tl.picked{box-shadow:0 0 0 3px var(--yellow),0 8px 16px rgba(0,0,0,.45)}
+/* cube squares: dark, tinted with the face colour, ringed in it, white letters */
+html.night .tile{background:color-mix(in srgb,var(--c) 20%,#13061D);color:#FFFFFF;box-shadow:inset 0 0 0 calc(var(--s) * .035) color-mix(in srgb,var(--c) 85%,transparent)}
+html.night .sticker.empty .tile{background:color-mix(in srgb,var(--c) 6%,#0E0417);box-shadow:inset 0 0 0 calc(var(--s) * .02) color-mix(in srgb,var(--c) 22%,transparent)}
+html.night .sticker.drop-ok .tile{box-shadow:inset 0 0 0 calc(var(--s) * .05) var(--yellow)}
 html,body{height:100%;overflow:hidden}
 [hidden]{display:none!important}
 body{background:var(--ground);color:var(--paper);font-family:var(--f);font-size:15px;line-height:1.35;-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
@@ -1991,7 +2026,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261105-011909';
+const BUILD='20261105-012122';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
