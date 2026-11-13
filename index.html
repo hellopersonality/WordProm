@@ -1261,8 +1261,8 @@ function animate(sel,k,s,dur,after,fromDeg){
   const A='XYZ'[k], els=cubies(sel);
   if(!fromDeg){rotEls(els,A,0,0);void cubeEl.offsetWidth;}
   const ms=Math.max(90,Math.round(dur*(1-Math.abs(fromDeg||0)/90)));
-  rotEls(els,A,90*s,ms);
-  setTimeout(()=>{moveStickers(sel,k,s);cubeEl.classList.remove('moving');render();busy=false;after&&after()},ms+30);
+  rotEls(els,A,90*s,ms);orientFor(quarter(k,s),ms);
+  setTimeout(()=>{moveStickers(sel,k,s);G.stickers.forEach(st=>delete st.spin);cubeEl.classList.remove('moving');render();busy=false;after&&after()},ms+30);
 }
 function turnCube(k,s,fromDeg){
   if((busy&&!fromDeg)||G.done) return;
@@ -1704,42 +1704,67 @@ const ORIENTS=(()=>{const out=[],perm=[[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[
   for(const p of perm)for(let sg=0;sg<8;sg++){const A=[[0,0,0],[0,0,0],[0,0,0]];p.forEach((c,r)=>A[r][c]=(sg>>r&1)?-1:1);
     const d=A[0][0]*(A[1][1]*A[2][2]-A[1][2]*A[2][1])-A[0][1]*(A[1][0]*A[2][2]-A[1][2]*A[2][0])+A[0][2]*(A[1][0]*A[2][1]-A[1][1]*A[2][0]);
     if(d===1)out.push(A)}return out})();
+/* the square-on position nearest a free rotation */
+function nearest(R){let P=ORIENTS[0],best=-9;
+  for(const O of ORIENTS){let t=0;for(let i=0;i<3;i++)for(let j=0;j<3;j++)t+=O[i][j]*R[i][j];if(t>best){best=t;P=O}}return P}
+/* a quarter turn (axis k, direction s) as a matrix */
+const quarter=(k,s)=>M3.T([[1,0,0],[0,1,0],[0,0,1]].map(e=>rot(e,k,s)));
+/* Letters face the right way while the cube moves: each one turns (in its square) to how it will read
+   once the cube lands on position P. Called whenever P changes, so letters flip as the cube passes
+   halfway to a new position, and are already right when it settles. */
+function orientFor(P,ms){
+  const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],PT=M3.T(P),cache={};
+  G.stickers.forEach(st=>{
+    if(!st.ch||!elById[st.id]) return;const ch=elById[st.id].querySelector('.ch');if(!ch) return;
+    const fk=key(st.n);
+    if(!(fk in cache)){
+      const n2=M3.apply(P,st.n).map(Math.round),upNew=AXES[key(n2)][1].map(v=>-v),u=M3.apply(PT,upNew),[lx,ly]=AXES[fk];
+      cache[fk]=Math.round(Math.atan2(dot(u,lx),-dot(u,ly))*180/Math.PI);
+    }
+    let a=cache[fk];const was=ch._rot||0;while(a-was>180)a-=360;while(was-a>180)a+=360;
+    ch._rot=a;ch.style.transition=`transform ${ms}ms cubic-bezier(.3,1.25,.5,1)`;ch.style.transform=a?`rotate(${a}deg)`:'';
+  });
+}
 const setSpin=R=>{cubeEl.style.transform=R?`rotateX(${VX}deg) rotateY(${VY}deg) ${M3.css(R)}`:''};
 /* move every sticker by a square-on rotation P (integer matrix), keeping each letter's on-screen tilt */
-function moveAll(P){
+function moveAll(P,settled){
   const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],r=v=>v.map(x=>Math.round(x)+0);
   G.stickers.forEach(st=>{
     const up=r(M3.apply(P,AXES[key(st.n)][1].map(v=>-v)));
     st.pos=r(M3.apply(P,st.pos));st.n=r(M3.apply(P,st.n));
     const[lx,ly]=AXES[key(st.n)];const a=Math.round(Math.atan2(dot(up,lx),-dot(up,ly))*180/Math.PI);
-    if(a) st.spin=a;});
+    if(a&&!settled) st.spin=a;});
 }
+/* A quick flick is a swipe: the classic quarter turn in that direction. A slower drag rolls the cube
+   freely, and letting go settles it on the nearest square-on position. */
+const SWIPE_MS=280,SWIPE_MIN=28;
 function liveMove(g,cx,cy,span){
   const dx=cx-g.x,dy=cy-g.y;
   if(!g.live){
     if(busy||G.done||Math.hypot(dx,dy)<8) return;
     if(T&&!T.step.turn){if(!g.nod){g.nod=true;tutNo()}return}
-    g.live={R:M3.I(),moved:0};busy=true;path=[];paintSel();
+    g.live={R:M3.I(),P:ORIENTS[0],t0:performance.now(),sx:g.x,sy:g.y,ex:g.x,ey:g.y};busy=true;path=[];paintSel();
     cubeEl.classList.add('moving','spinning');
   }
   const L=g.live,l=Math.hypot(dx,dy);if(!l) return;
   /* a drag rolls the cube about the on-screen axis at right angles to it, a quarter turn per span */
   const Q=M3.axis([-dy/l,dx/l,0],l/span*Math.PI/2);
-  L.R=M3.mul(M3.mul(M3.mul(VIEW_T,Q),VIEW_M),L.R);L.moved+=l;
-  g.x=cx;g.y=cy;setSpin(L.R);
+  L.R=M3.mul(M3.mul(M3.mul(VIEW_T,Q),VIEW_M),L.R);
+  g.x=cx;g.y=cy;L.ex=cx;L.ey=cy;setSpin(L.R);
+  const P=nearest(L.R);if(P!==L.P){L.P=P;orientFor(P,220)}
 }
 function liveEnd(g){
   const L=g.live;if(!L) return;g.live=null;
-  /* nearest square-on position: the one that best lines up with where the cube was let go */
-  let P=ORIENTS[0],best=-9;
-  for(const O of ORIENTS){const t=O[0][0]*L.R[0][0]+O[0][1]*L.R[0][1]+O[0][2]*L.R[0][2]+O[1][0]*L.R[1][0]+O[1][1]*L.R[1][1]+O[1][2]*L.R[1][2]+O[2][0]*L.R[2][0]+O[2][1]*L.R[2][1]+O[2][2]*L.R[2][2];if(t>best){best=t;P=O}}
-  /* ease from the release to it, about the single axis that joins them */
+  const DX=L.ex-L.sx,DY=L.ey-L.sy,flick=performance.now()-L.t0<SWIPE_MS&&Math.hypot(DX,DY)>=SWIPE_MIN;
+  const P=flick?quarter(...dirFor([0,0,1],DX,DY)):nearest(L.R);
+  orientFor(P,flick?TURN_DUR:240);
+  /* ease from the release to P, about the single axis that joins them */
   const D=M3.mul(P,M3.T(L.R)),tr=D[0][0]+D[1][1]+D[2][2],ang=Math.acos(Math.max(-1,Math.min(1,(tr-1)/2)));
   let u=[D[2][1]-D[1][2],D[0][2]-D[2][0],D[1][0]-D[0][1]];const ul=Math.hypot(...u);u=ul>1e-6?u.map(v=>v/ul):[0,0,1];
-  const R0=L.R,dur=reduce?0:Math.round(140+ang*180),t0=performance.now();
+  const R0=L.R,dur=reduce?0:Math.round((flick?120:140)+ang*(flick?170:180)),t0=performance.now();
   const done=()=>{
     const moved=!ORIENTS[0].every((r,i)=>r.every((v,j)=>v===P[i][j]));
-    if(moved) moveAll(P);
+    if(moved) moveAll(P,true);
     setSpin(null);cubeEl.classList.remove('moving','spinning');render();busy=false;
     if(moved) tutEvent('turn');
   };
@@ -2082,7 +2107,8 @@ function fingerLoop(){
     const r=$('stage').getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,L=r.width*.2,lay=G.stickers.filter(s=>s.ch);
     const snapOf=(dx,dy)=>{const R=M3.mul(M3.mul(VIEW_T,M3.axis([-dy,dx,0],Math.PI/2)),VIEW_M);let P=ORIENTS[0],bt=-9;
       for(const O of ORIENTS){let t=0;for(let i=0;i<3;i++)for(let j=0;j<3;j++)t+=O[i][j]*R[i][j];if(t>bt){bt=t;P=O}}return P};
-    const dirs=[[1,0],[-1,0],[0,-1],[0,1]],good=dirs.find(([dx,dy])=>{const P=snapOf(dx,dy);return lay.every(s=>VISIBLE.includes(key(M3.apply(P,s.n).map(Math.round))))})||dirs[0];
+    const shows=P=>lay.every(s=>VISIBLE.includes(key(M3.apply(P,s.n).map(Math.round))));
+    const dirs=[[1,0],[-1,0],[0,-1],[0,1]],good=dirs.find(([dx,dy])=>shows(snapOf(dx,dy))&&shows(quarter(...dirFor([0,0,1],dx,dy))))||dirs.find(([dx,dy])=>shows(quarter(...dirFor([0,0,1],dx,dy))))||dirs[0];
     const [dx,dy]=good,ox=dy?-r.width*.4:0,oy=dx?-r.height*.4:0;
     pts=[[cx+ox-dx*L,cy+oy-dy*L],[cx+ox+dx*L,cy+oy+dy*L]]}
   if(st.hint==='place'){taps=true;
@@ -2114,7 +2140,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261113-022831';
+const BUILD='20261113-023349';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
