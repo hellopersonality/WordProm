@@ -132,7 +132,10 @@ html.endless .pill.words{display:flex}
 /* ---------- the cube and what floats over it ---------- */
 .stage-wrap{flex:1 1 auto;min-height:0;position:relative;display:grid;place-items:center;touch-action:none;cursor:grab}
 .stage{position:relative;width:var(--side);height:var(--side);touch-action:none;user-select:none;-webkit-user-select:none;perspective:calc(var(--s) * 13);cursor:grab}
-/* while the cube is being turned it dims a little, so it reads as 'moving', not 'playing' */
+/* holding the space around the cube switches to free turning: the cube dims a little and pulses once */
+.cube.grab{animation:grab .32s cubic-bezier(.3,1.6,.5,1)}
+@keyframes grab{40%{scale:.94}}
+html.calm .cube.grab{animation:none}
 .cube .face{transition:filter .2s ease}
 .cube.spinning .face{filter:brightness(.62) saturate(.85)}
 .cube{position:absolute;left:50%;top:50%;width:0;height:0;transform-style:preserve-3d;transform:rotateX(-35.264deg) rotateY(-45deg)}
@@ -1653,6 +1656,7 @@ function stageDown(e){
   if(T&&(kind==='turn'?!T.step.turn:!T.step.target)){tutNo();e.preventDefault();return}
   gesture={x:e.clientX,y:e.clientY,st,fired:false,kind};
   if(gesture.kind==='trace'){path=[st];paintSel();preview(st.ch)}
+  else armHold(gesture);
   e.preventDefault();
 }
 stage.addEventListener('pointerdown',stageDown);
@@ -1679,7 +1683,8 @@ stage.addEventListener('pointermove',e=>{
   liveMove(gesture,e.clientX,e.clientY,stage.clientWidth*.4);
 });
 function endGesture(){
-  if(!gesture)return;const g=gesture;gesture=null;
+  if(!gesture)return;const g=gesture;gesture=null;clearTimeout(g.holdT);
+  if(g.free&&!g.live){cubeEl.classList.remove('spinning','grab');busy=false;return}
   if(g.kind==='trace'){submit();return}
   liveEnd(g);
 }
@@ -1735,14 +1740,55 @@ function moveAll(P,settled){
     const[lx,ly]=AXES[key(st.n)];const a=Math.round(Math.atan2(dot(up,lx),-dot(up,ly))*180/Math.PI);
     if(a&&!settled) st.spin=a;});
 }
-/* A quick flick is a swipe: the classic quarter turn in that direction. A slower drag rolls the cube
-   freely, and letting go settles it on the nearest square-on position. */
-const SWIPE_MS=280,SWIPE_MIN=28;
+/* Two ways to turn from the space around the cube:
+   - swipe: drag straight away and the cube follows your finger along one axis, snapping into the
+     quarter turn (snappy, like a classic cube);
+   - hold: press and keep still for a moment; the cube dims and pulses, and dragging then rolls it
+     freely in 3D, settling on the nearest square-on position when you let go. */
+const HOLD_MS=420;
+function armHold(g){
+  if(T&&!T.step.turn) return;
+  g.holdT=setTimeout(()=>{
+    if(gesture!==g||g.live||busy||G.done||!playing) return;
+    g.free=true;busy=true;path=[];paintSel();
+    cubeEl.classList.add('moving','spinning');cubeEl.classList.remove('grab');void cubeEl.offsetWidth;cubeEl.classList.add('grab');
+    HAP.word(4);SFX.tick&&SFX.tick(1);
+  },HOLD_MS);
+}
 function liveMove(g,cx,cy,span){
+  if(g.free){freeMove(g,cx,cy,span);return}
+  /* moving before the hold kicks in makes it a swipe */
+  if(Math.hypot(cx-g.x,cy-g.y)>=8) clearTimeout(g.holdT);
+  classicMove(g,cx,cy,span);
+}
+function liveEnd(g){if(g.free)freeEnd(g);else classicEnd(g)}
+/* the classic turn: follows the finger along one axis; passing a full quarter turn commits it and
+   keeps going. Letters flip upright as the turn passes halfway. */
+function classicMove(g,cx,cy,span){
   const dx=cx-g.x,dy=cy-g.y;
   if(!g.live){
     if(busy||G.done||Math.hypot(dx,dy)<8) return;
     if(T&&!T.step.turn){if(!g.nod){g.nod=true;tutNo()}return}
+    const[k,s]=dirFor([0,0,1],dx,dy),l=Math.hypot(dx,dy);
+    g.live={k,s,ux:dx/l,uy:dy/l,deg:0,half:false,els:cubies(()=>true)};busy=true;path=[];paintSel();cubeEl.classList.add('moving');
+  }
+  const L=g.live,prog=(dx*L.ux+dy*L.uy)/span;
+  if(prog>=1){moveStickers(()=>true,L.k,L.s);G.stickers.forEach(st=>delete st.spin);cubeEl.classList.remove('moving');render();busy=false;g.live=null;g.x=cx;g.y=cy;tutEvent('turn');return}
+  L.deg=Math.max(-.1,prog)*90*L.s;
+  rotEls(L.els,'XYZ'[L.k],L.deg,0);
+  const half=Math.abs(L.deg)>=45;if(half!==L.half){L.half=half;orientFor(half?quarter(L.k,L.s):ORIENTS[0],200)}
+}
+function classicEnd(g){
+  const L=g.live;if(!L) return;g.live=null;
+  if(Math.abs(L.deg)>=24){turnCube(L.k,L.s,L.deg);return}
+  orientFor(ORIENTS[0],160);
+  rotEls(L.els,'XYZ'[L.k],0,160);
+  setTimeout(()=>{cubeEl.classList.remove('moving');render();busy=false},190);
+}
+function freeMove(g,cx,cy,span){
+  const dx=cx-g.x,dy=cy-g.y;
+  if(!g.live){
+    if(G.done||Math.hypot(dx,dy)<2) return;
     g.live={R:M3.I(),P:ORIENTS[0],t0:performance.now(),sx:g.x,sy:g.y,ex:g.x,ey:g.y};busy=true;path=[];paintSel();
     cubeEl.classList.add('moving','spinning');
   }
@@ -1753,15 +1799,14 @@ function liveMove(g,cx,cy,span){
   g.x=cx;g.y=cy;L.ex=cx;L.ey=cy;setSpin(L.R);
   const P=nearest(L.R);if(P!==L.P){L.P=P;orientFor(P,220)}
 }
-function liveEnd(g){
+function freeEnd(g){
   const L=g.live;if(!L) return;g.live=null;
-  const DX=L.ex-L.sx,DY=L.ey-L.sy,flick=performance.now()-L.t0<SWIPE_MS&&Math.hypot(DX,DY)>=SWIPE_MIN;
-  const P=flick?quarter(...dirFor([0,0,1],DX,DY)):nearest(L.R);
-  orientFor(P,flick?TURN_DUR:240);
+  const P=nearest(L.R);
+  orientFor(P,240);
   /* ease from the release to P, about the single axis that joins them */
   const D=M3.mul(P,M3.T(L.R)),tr=D[0][0]+D[1][1]+D[2][2],ang=Math.acos(Math.max(-1,Math.min(1,(tr-1)/2)));
   let u=[D[2][1]-D[1][2],D[0][2]-D[2][0],D[1][0]-D[0][1]];const ul=Math.hypot(...u);u=ul>1e-6?u.map(v=>v/ul):[0,0,1];
-  const R0=L.R,dur=reduce?0:Math.round((flick?120:140)+ang*(flick?170:180)),t0=performance.now();
+  const R0=L.R,dur=reduce?0:Math.round(140+ang*180),t0=performance.now();
   const done=()=>{
     const moved=!ORIENTS[0].every((r,i)=>r.every((v,j)=>v===P[i][j]));
     if(moved) moveAll(P,true);
@@ -2140,7 +2185,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261113-023349';
+const BUILD='20261113-023738';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
