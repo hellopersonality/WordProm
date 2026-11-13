@@ -132,6 +132,9 @@ html.endless .pill.words{display:flex}
 /* ---------- the cube and what floats over it ---------- */
 .stage-wrap{flex:1 1 auto;min-height:0;position:relative;display:grid;place-items:center;touch-action:none;cursor:grab}
 .stage{position:relative;width:var(--side);height:var(--side);touch-action:none;user-select:none;-webkit-user-select:none;perspective:calc(var(--s) * 13);cursor:grab}
+/* while the cube is being turned it dims a little, so it reads as 'moving', not 'playing' */
+.cube .face{transition:filter .2s ease}
+.cube.spinning .face{filter:brightness(.62) saturate(.85)}
 .cube{position:absolute;left:50%;top:50%;width:0;height:0;transform-style:preserve-3d;transform:rotateX(-35.264deg) rotateY(-45deg)}
 /* level intro: the cube pops in and tumbles in one continuous motion, a full turn round the screen's
    vertical and horizontal axes at once, so every face swings past. The two extra rotations sit in
@@ -1285,7 +1288,9 @@ function stranded(){const nb=neighbours();return G.stickers.filter(s=>s.ch&&!nb[
 const canCollapse=()=>(G.collapses||0)<cfg.freeCollapses||G.coins>=cfg.collapseCost;
 function collapseLetters(){
   const nb=neighbours(), faces=Object.keys(FACE_NAME), occ=new Set(G.stickers.filter(s=>s.ch).map(s=>s.id));
-  const cellsOf={};faces.forEach(fk=>cellsOf[fk]=G.stickers.filter(s=>key(s.n)===fk));
+  /* squares in a fixed on-screen order, so ties settle the same way however the cube was turned */
+  const at=s=>(s.pos[1]+1)*9+(s.pos[0]+1)*3+(s.pos[2]+1);
+  const cellsOf={};faces.forEach(fk=>cellsOf[fk]=G.stickers.filter(s=>key(s.n)===fk).sort((a,b)=>at(a)-at(b)));
   const orig={};faces.forEach(fk=>orig[fk]=cellsOf[fk].filter(s=>s.ch));
   const pc=m=>{let c=0;while(m){c+=m&1;m>>=1}return c};
   const dist=(a,b)=>Math.hypot(a.pos[0]-b.pos[0],a.pos[1]-b.pos[1],a.pos[2]-b.pos[2]);
@@ -1678,26 +1683,72 @@ function endGesture(){
   if(g.kind==='trace'){submit();return}
   liveEnd(g);
 }
-/* whole-cube turn that follows a drag. Passing a full quarter turn commits it and keeps going,
-   so one long drag can spin the cube round; on release it settles to the nearest face. */
+/* ---------- free turning ----------
+   Dragging (in the space around the cube, or on the turn pad) rolls the cube like a trackball, in any
+   direction. On release it eases into the nearest of the 24 square-on positions, and that becomes the
+   cube's new layout: letters keep their tilt, then spin upright, as after any turn.
+   R is the extra rotation in cube space, applied after the fixed view. */
+const M3={
+  mul:(A,B)=>A.map((r,i)=>[0,1,2].map(j=>r[0]*B[0][j]+r[1]*B[1][j]+r[2]*B[2][j])),
+  T:A=>[0,1,2].map(i=>[0,1,2].map(j=>A[j][i])),
+  I:()=>[[1,0,0],[0,1,0],[0,0,1]],
+  /* rotation about unit axis u by angle a (same convention as CSS rotate3d) */
+  axis(u,a){const[x,y,z]=u,c=Math.cos(a),s=Math.sin(a),t=1-c;
+    return [[c+x*x*t,x*y*t-z*s,x*z*t+y*s],[y*x*t+z*s,c+y*y*t,y*z*t-x*s],[z*x*t-y*s,z*y*t+x*s,c+z*z*t]]},
+  apply:(A,v)=>[0,1,2].map(i=>A[i][0]*v[0]+A[i][1]*v[1]+A[i][2]*v[2]),
+  css:A=>`matrix3d(${A[0][0]},${A[1][0]},${A[2][0]},0,${A[0][1]},${A[1][1]},${A[2][1]},0,${A[0][2]},${A[1][2]},${A[2][2]},0,0,0,0,1)`
+};
+const VIEW_M=M3.mul(M3.axis([1,0,0],VX*Math.PI/180),M3.axis([0,1,0],VY*Math.PI/180)),VIEW_T=M3.T(VIEW_M);
+/* the 24 ways a cube can sit square-on */
+const ORIENTS=(()=>{const out=[],perm=[[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]];
+  for(const p of perm)for(let sg=0;sg<8;sg++){const A=[[0,0,0],[0,0,0],[0,0,0]];p.forEach((c,r)=>A[r][c]=(sg>>r&1)?-1:1);
+    const d=A[0][0]*(A[1][1]*A[2][2]-A[1][2]*A[2][1])-A[0][1]*(A[1][0]*A[2][2]-A[1][2]*A[2][0])+A[0][2]*(A[1][0]*A[2][1]-A[1][1]*A[2][0]);
+    if(d===1)out.push(A)}return out})();
+const setSpin=R=>{cubeEl.style.transform=R?`rotateX(${VX}deg) rotateY(${VY}deg) ${M3.css(R)}`:''};
+/* move every sticker by a square-on rotation P (integer matrix), keeping each letter's on-screen tilt */
+function moveAll(P){
+  const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],r=v=>v.map(x=>Math.round(x)+0);
+  G.stickers.forEach(st=>{
+    const up=r(M3.apply(P,AXES[key(st.n)][1].map(v=>-v)));
+    st.pos=r(M3.apply(P,st.pos));st.n=r(M3.apply(P,st.n));
+    const[lx,ly]=AXES[key(st.n)];const a=Math.round(Math.atan2(dot(up,lx),-dot(up,ly))*180/Math.PI);
+    if(a) st.spin=a;});
+}
 function liveMove(g,cx,cy,span){
   const dx=cx-g.x,dy=cy-g.y;
   if(!g.live){
     if(busy||G.done||Math.hypot(dx,dy)<8) return;
     if(T&&!T.step.turn){if(!g.nod){g.nod=true;tutNo()}return}
-    const[k,s]=dirFor([0,0,1],dx,dy),l=Math.hypot(dx,dy);
-    g.live={k,s,ux:dx/l,uy:dy/l,deg:0,els:cubies(()=>true)};busy=true;path=[];paintSel();cubeEl.classList.add('moving');
+    g.live={R:M3.I(),moved:0};busy=true;path=[];paintSel();
+    cubeEl.classList.add('moving','spinning');
   }
-  const L=g.live,prog=(dx*L.ux+dy*L.uy)/span;
-  if(prog>=1){moveStickers(()=>true,L.k,L.s);cubeEl.classList.remove('moving');render();busy=false;g.live=null;g.x=cx;g.y=cy;tutEvent('turn');return}
-  L.deg=Math.max(-.1,prog)*90*L.s;
-  rotEls(L.els,'XYZ'[L.k],L.deg,0);
+  const L=g.live,l=Math.hypot(dx,dy);if(!l) return;
+  /* a drag rolls the cube about the on-screen axis at right angles to it, a quarter turn per span */
+  const Q=M3.axis([-dy/l,dx/l,0],l/span*Math.PI/2);
+  L.R=M3.mul(M3.mul(M3.mul(VIEW_T,Q),VIEW_M),L.R);L.moved+=l;
+  g.x=cx;g.y=cy;setSpin(L.R);
 }
 function liveEnd(g){
   const L=g.live;if(!L) return;g.live=null;
-  if(Math.abs(L.deg)>=24){turnCube(L.k,L.s,L.deg);return}
-  rotEls(L.els,'XYZ'[L.k],0,160);
-  setTimeout(()=>{cubeEl.classList.remove('moving');render();busy=false},190);
+  /* nearest square-on position: the one that best lines up with where the cube was let go */
+  let P=ORIENTS[0],best=-9;
+  for(const O of ORIENTS){const t=O[0][0]*L.R[0][0]+O[0][1]*L.R[0][1]+O[0][2]*L.R[0][2]+O[1][0]*L.R[1][0]+O[1][1]*L.R[1][1]+O[1][2]*L.R[1][2]+O[2][0]*L.R[2][0]+O[2][1]*L.R[2][1]+O[2][2]*L.R[2][2];if(t>best){best=t;P=O}}
+  /* ease from the release to it, about the single axis that joins them */
+  const D=M3.mul(P,M3.T(L.R)),tr=D[0][0]+D[1][1]+D[2][2],ang=Math.acos(Math.max(-1,Math.min(1,(tr-1)/2)));
+  let u=[D[2][1]-D[1][2],D[0][2]-D[2][0],D[1][0]-D[0][1]];const ul=Math.hypot(...u);u=ul>1e-6?u.map(v=>v/ul):[0,0,1];
+  const R0=L.R,dur=reduce?0:Math.round(140+ang*180),t0=performance.now();
+  const done=()=>{
+    const moved=!ORIENTS[0].every((r,i)=>r.every((v,j)=>v===P[i][j]));
+    if(moved) moveAll(P);
+    setSpin(null);cubeEl.classList.remove('moving','spinning');render();busy=false;
+    if(moved) tutEvent('turn');
+  };
+  if(!dur||ang<1e-3){done();return}
+  (function step(now){
+    const k=Math.min(1,(now-t0)/dur),e=1-Math.pow(1-k,3);
+    setSpin(M3.mul(M3.axis(u,ang*e),R0));
+    if(k<1) requestAnimationFrame(step); else done();
+  })(t0);
 }
 /* The turn pad is one big target: tap a side to turn the cube that way, or drag anywhere on it
    to spin the cube with your finger; the knob springs back on release. */
@@ -1908,7 +1959,7 @@ const TUT=[
   {text:'Changed your mind? Tap <b>undo</b> to take back your last word.',reveal:['undo'],wait:'undo',el:'undoBtn',hint:'tap'},
   {text:'Tap <b>New letters</b> to trade your free letters for a fresh set. It\'s free this time.',reveal:['reset'],wait:'reset',el:'trayReset',hint:'tap'},
   {text:'Words earn coins. After this, <b>New letters</b> costs coins.',reveal:['coins'],show:'coins',auto:3900},
-  {text:'Letters cut off from the others can\'t be used. Tap <b>Collapse</b> to slide them together.',reveal:['collapse'],lay:[['front',-1,-1,'h'],['front',1,1,'i'],['right',1,1,'p']],wait:'collapse',el:'collapseBtn',hint:'tap'},
+  {text:'Letters cut off from the others can\'t be used. Tap <b>Collapse</b> to slide them together.',reveal:['collapse'],lay:[['front',-1,-1,'h'],['front',1,1,'i'],['front',1,-1,'p']],wait:'collapse',el:'collapseBtn',hint:'tap'},
   {text:'Now they touch. Spell <b>HIP</b> to clear the cube.',target:'hip',hint:'trace'},
   {text:'Cube cleared! Clearing every letter finishes a level, and <b>Left</b> shows how many remain. You\'re ready.',reveal:['left','meter','level','menu'],el:'coachGo',turn:true,end:true,hint:'tap'}
 ];
@@ -2027,8 +2078,11 @@ function fingerLoop(){
   if(st.hint==='trace') pts=(T.ids||[]).map(at).filter(Boolean);
   if(st.hint==='swipe'){
     /* swipe the way that actually brings the hidden letters into view (sideways first, then up or down) */
-    const r=$('stage').getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,L=r.width*.38,lay=G.stickers.filter(s=>s.ch);
-    const dirs=[[1,0],[-1,0],[0,-1],[0,1]],good=dirs.find(([dx,dy])=>{const[k,sg]=dirFor([0,0,1],dx,dy);return lay.every(s=>VISIBLE.includes(key(rot(s.n,k,sg))))})||dirs[0];
+    /* a drag of 40% of the stage is a quarter turn; simulate each direction's snap and show one that works */
+    const r=$('stage').getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,L=r.width*.2,lay=G.stickers.filter(s=>s.ch);
+    const snapOf=(dx,dy)=>{const R=M3.mul(M3.mul(VIEW_T,M3.axis([-dy,dx,0],Math.PI/2)),VIEW_M);let P=ORIENTS[0],bt=-9;
+      for(const O of ORIENTS){let t=0;for(let i=0;i<3;i++)for(let j=0;j<3;j++)t+=O[i][j]*R[i][j];if(t>bt){bt=t;P=O}}return P};
+    const dirs=[[1,0],[-1,0],[0,-1],[0,1]],good=dirs.find(([dx,dy])=>{const P=snapOf(dx,dy);return lay.every(s=>VISIBLE.includes(key(M3.apply(P,s.n).map(Math.round))))})||dirs[0];
     const [dx,dy]=good,ox=dy?-r.width*.4:0,oy=dx?-r.height*.4:0;
     pts=[[cx+ox-dx*L,cy+oy-dy*L],[cx+ox+dx*L,cy+oy+dy*L]]}
   if(st.hint==='place'){taps=true;
@@ -2060,7 +2114,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261113-013639';
+const BUILD='20261113-022831';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
