@@ -1,7 +1,8 @@
 # Wubix
 
 A word puzzle on a 3x3 letter cube. Trace words across faces, twist rows and columns, clear every letter,
-or play Endless mode where every word is replaced by new letters.
+or play a Run: the cube never empties, each round has a coin target, and clearing it earns a stamp
+that boosts matching words.
 
 Live at https://hellopersonality.github.io/WordProm/
 
