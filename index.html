@@ -305,15 +305,15 @@ html.endless #goalClear,html.endless #collapseBtn{display:none}
 @media (hover:hover){ .stage:not(.tracing) .sticker:not(.empty):hover .tile{scale:1.05} }
 /* hand of tray letters: fanned on an arc, each card breathing on its own beat, dealt in on a new set */
 .tray-t .tl{rotate:calc(var(--o,0) * 4deg);translate:0 calc(var(--o,0) * var(--o,0) * 1.3px);transform-origin:50% 120%;
-  animation:hand 3.2s cubic-bezier(.37,0,.63,1) infinite;animation-delay:calc(var(--o,0) * -.55s);transition:transform .2s cubic-bezier(.2,1.6,.4,1),opacity .15s}
+  animation:hand 3.2s cubic-bezier(.37,0,.63,1) infinite;animation-delay:calc(var(--o,0) * -.55s + var(--ph,0s));transition:transform .2s cubic-bezier(.2,1.6,.4,1),opacity .15s}
 @keyframes hand{0%,100%{translate:0 calc(var(--o,0) * var(--o,0) * 1.3px);rotate:calc(var(--o,0) * 4deg - .8deg)}
   50%{translate:0 calc(var(--o,0) * var(--o,0) * 1.3px - 3px);rotate:calc(var(--o,0) * 4deg + .8deg)}}
 .tray-t .tl.deal{animation:handdeal .5s cubic-bezier(.2,1.5,.4,1) both,hand 3.2s cubic-bezier(.37,0,.63,1) infinite;
-  animation-delay:calc(var(--i,0) * 60ms),calc(var(--o,0) * -.55s)}
+  animation-delay:calc(var(--i,0) * 60ms),calc(var(--o,0) * -.55s + var(--ph,0s))}
 /* swap: the flying letters, and the squash as each lands */
 .swfly{position:fixed;left:0;top:0;border-radius:20%;display:grid;place-items:center;font-family:var(--f);font-weight:800;text-transform:uppercase;line-height:1;z-index:2;
   box-shadow:0 10px 22px rgba(0,0,0,.45),0 0 0 2px rgba(255,255,255,.35);will-change:transform}
-.tray-t .tl.swapin{animation:swapin .42s cubic-bezier(.3,1.6,.5,1) both,hand 3.2s cubic-bezier(.37,0,.63,1) infinite;animation-delay:0s,calc(var(--o,0) * -.55s)}
+.tray-t .tl.swapin{animation:swapin .42s cubic-bezier(.3,1.6,.5,1) both,hand 3.2s cubic-bezier(.37,0,.63,1) infinite;animation-delay:0s,calc(var(--o,0) * -.55s + var(--ph,0s))}
 @keyframes swapin{0%{transform:scale(1.3,.78)}45%{transform:scale(.9,1.12)}100%{transform:none}}
 .sticker.swland .tile{animation:swland .42s cubic-bezier(.3,1.6,.5,1)}
 @keyframes swland{0%{transform:translateZ(calc(var(--s)*.06)) scale(1.3,.8)}45%{transform:translateZ(calc(var(--s)*.03)) scale(.9,1.1)}100%{transform:none}}
@@ -840,6 +840,8 @@ function hud(){
   if(!G.tray) G.tray=makeTray();
   const deal=G._deal;G._deal=false;const swapIn=G._swapIn;G._swapIn=null;const mid=(G.tray.length-1)/2;
   const glow=T&&T.step.wait==='place';
+  /* the wave runs on one clock: redrawn letters join it mid-swing instead of starting over */
+  $('tray').style.setProperty('--ph',(-(performance.now()/1000)%3.2).toFixed(3)+'s');
   $('tray').innerHTML=G.tray.map((c,i)=>`<button class="tl${deal?' deal':''}${glow&&(!T.step.trayPick||c===T.step.trayPick)?' coach-target':''}${picked===i?' picked':''}${swapIn===i?' swapin':''}" style="--o:${(i-mid).toFixed(2)};--i:${i}" data-i="${i}" aria-label="${c==='?'?'Wildcard, any letter':'Letter '+c.toUpperCase()}">${c}</button>`).join('')+
     Array.from({length:Math.max(0,cfg.traySize-G.tray.length)},()=>'<span class="tray-empty"></span>').join('');
   $('found').innerHTML=made?G.found.map(f=>`<span class="w${f.nf>1?' cross':''}">${f.w}<b>+${f.c}</b></span>`).join(''):'<span class="none">No words yet</span>';
@@ -2058,7 +2060,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261113-013506';
+const BUILD='20261113-013639';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
