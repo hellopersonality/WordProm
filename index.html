@@ -54,9 +54,6 @@ html.night .mod{box-shadow:inset 0 0 0 1px #2B1C35}
 /* Dark mode surfaces: nothing bright and solid. Every coloured part becomes a dark fill faintly tinted
    with its colour, a thin ring of that colour, and white text, like coloured glyphs on a dark ground.
    --a is the part's accent. */
-html.night .pill.lvl{--a:var(--orange)} html.night .pill.words{--a:var(--sky)} html.night .pill.coins{--a:var(--yellow)}
-html.night .pill.undo{--a:var(--mist)}
-html.night .tool.collapse{--a:var(--orange)} html.night .tool.renew{--a:var(--red)}
 html.night .tl{--a:var(--mist)}
 html.night .btn{--a:var(--mist)} html.night .btn.primary{--a:var(--yellow)}
 html.night .found .w:nth-child(4n+1){--a:var(--sky)} html.night .found .w:nth-child(4n+2){--a:var(--orange)} html.night .found .w:nth-child(4n+3){--a:var(--yellow)} html.night .found .w:nth-child(4n){--a:var(--mist)}
@@ -68,19 +65,15 @@ html.night .rules li:nth-child(6n+4){--a:var(--mist)} html.night .rules li:nth-c
 html.night .inst-top{--a:var(--yellow)} html.night .toast{--a:var(--mist)} html.night .preview .tag{--a:var(--yellow)}
 html.night .logo span:nth-child(1){--a:var(--red)} html.night .logo span:nth-child(2){--a:var(--yellow)} html.night .logo span:nth-child(3){--a:var(--sky)}
 html.night .logo span:nth-child(4){--a:var(--orange)} html.night .logo span:nth-child(5){--a:var(--cobalt)}
-html.night :is(.pill.lvl,.pill.words,.pill.coins,.pill.undo,.tool.collapse,.tool.renew,.tl,.btn,.found .w,.card .ttl,.perf .tier,.mbtn.y,.mbtn.p,.mbtn.s,.mbtn.m,.mbtn.r,
+html.night :is(.tl,.btn,.found .w,.card .ttl,.perf .tier,.mbtn.y,.mbtn.p,.mbtn.s,.mbtn.m,.mbtn.r,
   .tabs button[aria-selected="true"],.tabs .x,.rules li,.inst-top,.toast,.preview .tag,.logo span){
   background:color-mix(in srgb,var(--a) 13%,#1A0927)!important;color:#FFFFFF!important;
   box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--a) 80%,transparent)}
 /* labels, icons and badges take the accent itself */
-html.night .pill.stat .tag{color:var(--a);opacity:1}
-html.night .tool svg{color:var(--a)}
 html.night .mbtn small{color:var(--a);opacity:.9}
 html.night .logo span{color:var(--a)!important}
 html.night .perf .tier{color:var(--yellow)!important}
 html.night .inst-steps li::before{background:transparent;color:var(--yellow);box-shadow:inset 0 0 0 2px var(--yellow)}
-html.night .pill.undo:disabled{background:var(--off-bg)!important;color:var(--off-fg)!important;box-shadow:none}
-html.night .pill.coins.spend{animation:none}
 html.night .tray-t .tl.picked{box-shadow:0 0 0 3px var(--yellow),0 8px 16px rgba(0,0,0,.45)}
 /* cube squares: dark, tinted with the face colour, ringed in it, white letters */
 html.night .tile{background:color-mix(in srgb,var(--c) 20%,#13061D);color:#FFFFFF;box-shadow:inset 0 0 0 calc(var(--s) * .035) color-mix(in srgb,var(--c) 85%,transparent)}
@@ -103,40 +96,38 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--yellow);outline
 .bg{position:fixed;inset:0;z-index:-1;pointer-events:none}
 @keyframes checker{to{transform:translate(var(--check),var(--check))}}
 
-/* ---------- status bar ---------- */
-.bar{display:flex;gap:5px;padding:5px;flex:none}
-.pill{appearance:none;border:0;height:36px;border-radius:var(--r-t);display:flex;align-items:center;justify-content:center;gap:6px;padding:0 12px;font-weight:800;font-size:20px;color:var(--ink);font-variant-numeric:tabular-nums;min-width:0}
-.pill.lvl{background:var(--orange);flex:.5 1 0}
-.pill.lvl[data-len="3"] b{font-size:14px}.pill.lvl[data-len="4"] b{font-size:11px}
-.pill.words{background:var(--sky);flex:.9 1 0;cursor:pointer}
-.pill.dial{background:var(--dial);flex:.7 1 0;position:relative;overflow:hidden;color:var(--paper)}
-/* stat pills: a small label over the number */
-.pill.stat{flex-direction:column;gap:2px;height:42px;padding:0 8px}
-.pill.stat .tag{font-size:9px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;line-height:1;opacity:.62;white-space:nowrap}
-.pill.stat b{font-size:19px;line-height:1}
-.pill.stat .val{display:flex;align-items:center;gap:5px}
-.dial .meter{position:absolute;left:7px;right:7px;bottom:4px;height:3px;border-radius:2px;background:var(--raise2);overflow:hidden}
-.dial .meter i{position:absolute;left:0;top:0;bottom:0;width:100%;background:var(--paper);border-radius:2px;transition:width .6s cubic-bezier(.3,1.4,.5,1)}
-.pill.coins{background:var(--yellow);flex:1.55 1 0;cursor:pointer;min-width:0}
-.pill.coins .val b{font-size:19px}
-.pill.coins .val[data-len="4"] b{font-size:17px}
-.pill.coins{padding:0 5px}
-.pill.coins .coin{flex:none}
-@media (max-width:340px){ html .pill.coins .val[data-len="3"] .coin{display:none} html .pill.coins .val[data-len="5"] b,html .pill.coins .val[data-len="6"] b,html .pill.coins .val[data-len="7"] b{font-size:12.5px} }
-.pill.coins .val[data-len="4"] .coin,.pill.coins .val[data-len="5"] .coin,.pill.coins .val[data-len="6"] .coin,.pill.coins .val[data-len="7"] .coin,.pill.coins .val[data-len="8"] .coin{display:none}
-.pill.coins .val[data-len="5"] b{font-size:15px}
-.pill.coins .val[data-len="6"] b,.pill.coins .val[data-len="7"] b,.pill.coins .val[data-len="8"] b{font-size:13px}
-.pill.coins .coin{width:15px;height:15px}.pill.coins .coin::after{width:6px;height:6px}
+/* ---------- the bottom panel: a quiet status line over the tools and letters ----------
+   Everything you read and tap lives down here, in easy thumb reach; the cube has the rest of the screen.
+   One accent colour (the coins), the free letters as the loudest thing, tools as outlines. */
+.hub{flex:none;position:relative;display:flex;flex-direction:column;padding-top:4px}
+.hub>.meter{position:absolute;left:18px;right:18px;top:0;height:3px;border-radius:0 0 3px 3px;background:var(--raise2);overflow:hidden;pointer-events:none}
+.hub>.meter i{position:absolute;left:0;top:0;bottom:0;width:100%;background:var(--yellow);transition:width .6s cubic-bezier(.3,1.4,.5,1)}
+html.endless .hub>.meter{display:none}
+.bar{display:flex;align-items:center;gap:14px;padding:10px 12px 0 16px}
+.pill{appearance:none;border:0;background:none;padding:0;display:flex;align-items:baseline;gap:5px;color:var(--paper);font-variant-numeric:tabular-nums;min-width:0;flex:none;line-height:1;white-space:nowrap}
+.pill .tag{font-size:12px;font-weight:600;opacity:.5}
+.pill b{font-size:17px;font-weight:700}
+.pill.lvl .tag{order:-1}
+.pill.lvl[data-len="3"] b,.pill.lvl[data-len="4"] b{font-size:15px}
+/* the status line opens the list of words you've made */
+.pill.lvl,.pill.dial,.pill.words{cursor:pointer}
+.pill.words{display:none}
+html.endless .pill.words{display:flex}
+.pill.coins{margin-left:auto;align-items:center;cursor:pointer}
+.pill.coins .tag{display:none}
+.pill.coins .val{display:flex;align-items:center;gap:6px}
+.pill.coins b{font-size:18px;color:var(--yellow)}
 .coin{width:18px;height:18px;border-radius:50%;background:var(--ink);display:grid;place-items:center;flex:none}
 .coin::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--yellow)}
-.pill.coins.spend{animation:spend .5s}
-@keyframes spend{30%{background:var(--red)}}
-.pill.menu{background:var(--ink);width:36px;height:42px;flex:none;padding:0;color:var(--paper);cursor:pointer}
-.pill.menu svg{width:18px;height:18px}
-.pill.undo{background:var(--paper);color:var(--ink);transition:opacity .2s,background .2s}
-.pill.undo:disabled{background:var(--off-bg);color:var(--off-fg);cursor:default}
+.pill.coins .coin{width:12px;height:12px;background:transparent}.pill.coins .coin::after{width:7px;height:7px}
+.pill.coins.spend b{animation:spend .5s}
+@keyframes spend{30%{color:var(--red)}}
+.pill.menu{width:34px;height:34px;justify-content:center;align-items:center;margin:0 -4px;color:var(--fog);cursor:pointer;border-radius:12px}
+.pill.menu svg{width:19px;height:19px}
+.pill.menu:active{background:var(--raise)}
+.pill.undo{color:var(--paper);transition:opacity .2s,color .2s}
+.pill.undo:disabled{color:var(--off-fg);cursor:default}
 .pill.undo:not(:disabled):active{transform:scale(.9)}
-.pill.undo svg{width:19px;height:19px}
 
 /* ---------- the cube and what floats over it ---------- */
 .stage-wrap{flex:1 1 auto;min-height:0;position:relative;display:grid;place-items:center;touch-action:none;cursor:grab}
@@ -241,19 +232,24 @@ html.endless #goalClear,html.endless #collapseBtn{display:none}
 @keyframes deal{from{transform:translateY(10px) scale(.92);opacity:0}}
 
 /* ---------- tool bar ---------- */
-.dock{display:flex;gap:6px;padding:6px;flex:none;align-items:stretch}
-.tool{appearance:none;border:0;width:52px;height:52px;border-radius:var(--r-t);display:grid;place-items:center;align-content:center;gap:1px;cursor:pointer;color:var(--ink);flex:none;padding:0;-webkit-touch-callout:none;user-select:none}
+.dock{display:flex;gap:10px;padding:8px 12px 12px;flex:none;align-items:center}
+.tool{appearance:none;border:0;width:50px;height:50px;border-radius:var(--r-t);display:grid;place-items:center;align-content:center;gap:1px;cursor:pointer;color:var(--paper);background:transparent;box-shadow:inset 0 0 0 1.5px var(--raise2);flex:none;padding:0;-webkit-touch-callout:none;user-select:none}
 .tool svg{width:24px;height:24px}
 .tool .cost{font-size:10px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1;white-space:nowrap}
-.tool.collapse{background:var(--orange)} .tool.renew{background:var(--red)}
+/* tools are outlines; their colour lives in the icon */
+.tool.collapse svg{color:var(--orange)} .tool.renew svg{color:var(--red)}
+.tool .cost{color:var(--fog)}
 .tool:active{transform:scale(.92)!important}
-.tray-t{flex:1 1 auto;min-width:0;background:var(--ink);border-radius:var(--r-t);display:flex;gap:4px;align-items:center;justify-content:center;padding:6px;touch-action:none}
-.tl{appearance:none;width:34px;height:38px;border-radius:10px;border:0;background:var(--paper);color:var(--ink);display:grid;place-items:center;cursor:grab;font-family:var(--f);font-weight:800;font-size:19px;text-transform:uppercase;touch-action:none;user-select:none;-webkit-user-select:none;transition:transform .15s;flex:1 1 0;max-width:34px;min-width:0;padding:0}
+.tray-t{flex:1 1 auto;min-width:0;background:transparent;border-radius:var(--r-t);display:flex;gap:6px;align-items:center;justify-content:center;padding:6px;touch-action:none}
+.tl{appearance:none;width:40px;height:46px;border-radius:11px;border:0;background:var(--paper);color:var(--ink);display:grid;place-items:center;cursor:grab;font-family:var(--f);font-weight:800;font-size:22px;text-transform:uppercase;touch-action:none;user-select:none;-webkit-user-select:none;transition:transform .15s;flex:1 1 0;max-width:34px;min-width:0;padding:0}
 @media (hover:hover){ .tl:hover{transform:translateY(-3px) rotate(-3deg)} }
 .tray-t .tl.picked{transform:translateY(-9px) scale(1.12);box-shadow:0 0 0 3px var(--yellow),0 8px 16px rgba(0,0,0,.45);z-index:1}
 .stage.picking .sticker.drop-ok .tile{animation:spot 1.2s ease-in-out infinite}
-.tray-empty{width:34px;height:38px;border-radius:10px;box-shadow:inset 0 0 0 2px var(--raise2);flex:1 1 0;max-width:34px;min-width:0}
-.pad{width:52px;height:52px;flex:none;border-radius:var(--r-t);background:var(--ink);position:relative;touch-action:none;cursor:grab;-webkit-touch-callout:none;user-select:none}
+.tray-empty{width:40px;height:46px;border-radius:11px;box-shadow:inset 0 0 0 2px var(--raise2);flex:1 1 0;max-width:40px;min-width:0}
+/* the turn pad rests faded (most people swipe the cube) and wakes while touched */
+.pad{opacity:.3;transition:opacity .3s}
+.pad.awake,.pad.coach-target{opacity:1}
+.pad{width:52px;height:52px;flex:none;border-radius:var(--r-t);background:transparent;position:relative;touch-action:none;cursor:grab;-webkit-touch-callout:none;user-select:none}
 .pad svg{position:absolute;inset:0;width:100%;height:100%}
 .pad .chev{fill:none;stroke:var(--paper);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:stroke .15s}
 .pad .chev.on{stroke:var(--yellow)}
@@ -341,8 +337,8 @@ html.endless #goalClear,html.endless #collapseBtn{display:none}
 .tut-off{visibility:hidden!important;pointer-events:none!important}
 .tut-in{animation:tutIn .6s cubic-bezier(.2,1.6,.4,1) both!important}
 @keyframes tutIn{0%{scale:.3;opacity:0}100%{scale:1;opacity:1}}
-.dock{transition:opacity .4s}
-.dock.tut-hide{opacity:0;pointer-events:none}
+.hub{transition:opacity .4s}
+.hub.tut-hide{opacity:0;pointer-events:none}
 .stage .face{transition:opacity .6s ease,background-color .6s ease}
 .stage.tut-bare .face:not(.sticker),.stage.tut-bare .sticker.empty,.stage.tut-face .face:not(.fz){opacity:0;pointer-events:none}
 .stage.tut-bare .sticker{background-color:transparent}
@@ -452,16 +448,6 @@ html.calm .btn.primary::after,html.calm #tContinue::after,html.calm #tNew::after
 <div class="bg" aria-hidden="true"></div>
 <div class="ripples" aria-hidden="true"><svg id="ripples"></svg></div>
 <div class="app" id="app">
-  <header class="mod bar" aria-label="Level status">
-    <div class="pill stat lvl jelly" id="lvlPill" style="--d:0" title="Level"><span class="tag" id="lvlTag">Level</span><b id="lvl">1</b></div>
-    <button class="pill stat words jelly" id="wordsPill" style="--d:1" title="Words made. Tap to see them." aria-label="Words made"><span class="tag">Words</span><b id="wordsVal">0</b></button>
-    <div class="pill stat dial jelly" id="goalClear" style="--d:2" title="Letters left"><span class="tag">Left</span><b id="lettersVal">54</b><i class="meter" aria-hidden="true"><i id="ring"></i></i></div>
-    <div class="pill stat coins jelly" id="coinTile" style="--d:3" title="Coins"><span class="tag">Coins</span><span class="val"><span class="coin" aria-hidden="true"></span><b id="coins">0</b></span></div>
-    <button class="pill menu undo" id="undoBtn" title="Undo the last word or placed letter" aria-label="Undo" disabled>
-      <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 4.5 3.5 8.5l4 4"/><path d="M4 8.5h7.5a5 5 0 0 1 0 10H9"/></svg></button>
-    <button class="pill menu" id="menuBtn" title="Menu" aria-label="Menu">
-      <svg viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M2.5 4h13M2.5 9h13M2.5 14h13"/></svg></button>
-  </header>
 
   <div class="stage-wrap" id="stageWrap">
     <div class="stage" id="stage">
@@ -492,7 +478,19 @@ html.calm .btn.primary::after,html.calm #tContinue::after,html.calm #tNew::after
     <div class="mod found-panel" id="foundPanel" hidden><div class="found" id="found"></div></div>
   </div>
 
-  <section class="mod dock" aria-label="Tools and letters">
+  <section class="mod hub" id="hub">
+  <i class="meter" id="meter" aria-hidden="true"><i id="ring"></i></i>
+    <header class="bar" aria-label="Level status">
+    <div class="pill stat lvl" id="lvlPill" title="Level"><span class="tag" id="lvlTag">Level</span><b id="lvl">1</b></div>
+    <button class="pill stat words" id="wordsPill" title="Words made. Tap to see them." aria-label="Words made"><b id="wordsVal">0</b><span class="tag">words</span></button>
+    <div class="pill stat dial" id="goalClear" title="Letters left"><b id="lettersVal">54</b><span class="tag">left</span></div>
+    <div class="pill stat coins" id="coinTile" title="Coins"><span class="tag">Coins</span><span class="val"><span class="coin" aria-hidden="true"></span><b id="coins">0</b></span></div>
+    <button class="pill menu undo" id="undoBtn" title="Undo the last word or placed letter" aria-label="Undo" disabled>
+      <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 4.5 3.5 8.5l4 4"/><path d="M4 8.5h7.5a5 5 0 0 1 0 10H9"/></svg></button>
+    <button class="pill menu" id="menuBtn" title="Menu" aria-label="Menu">
+      <svg viewBox="0 0 18 18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M2.5 4h13M2.5 9h13M2.5 14h13"/></svg></button>
+  </header>
+  <div class="dock" role="group" aria-label="Tools and letters">
     <button class="tool collapse jelly" id="collapseBtn" style="--d:4" title="Collapse: pulls stranded letters together on each face" aria-label="Collapse">
       <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l5 5M9 5v4H5M20 4l-5 5M15 5v4h4M4 20l5-5M9 19v-4H5M20 20l-5-5M15 19v-4h4"/></svg>
       <span class="cost" id="collapseSub">free</span></button>
@@ -504,6 +502,7 @@ html.calm .btn.primary::after,html.calm #tContinue::after,html.calm #tNew::after
       <svg viewBox="0 0 52 52" aria-hidden="true"><path class="chev" data-d="up" d="M21.5 11.5 26 7l4.5 4.5"/><path class="chev" data-d="down" d="M21.5 40.5 26 45l4.5-4.5"/><path class="chev" data-d="left" d="M11.5 21.5 7 26l4.5 4.5"/><path class="chev" data-d="right" d="M40.5 21.5 45 26l-4.5 4.5"/></svg>
       <span class="knob" id="knob"></span>
     </div>
+  </div>
   </section>
 </div>
 
@@ -827,7 +826,7 @@ function hud(){
   document.documentElement.classList.toggle('endless',isEndless());
   $('lvl').textContent=isEndless()?'∞':G.level;$('lvlPill').dataset.len=String($('lvl').textContent).length;$('lvlPill').title=isEndless()?'Endless':'Level';$('lvlTag').textContent=isEndless()?'Endless':'Level';
   $('wordsVal').textContent=made;
-  if(lastHud.made!==undefined&&made>lastHud.made) juice($('wordsPill'));
+  if(lastHud.made!==undefined&&made>lastHud.made&&isEndless()) juice($('wordsPill'));
   $('lettersVal').textContent=left;
   if(lastHud.left!==undefined&&left!==lastHud.left) juice($('goalClear'));
   $('ring').style.width=(100*left/total).toFixed(1)+'%';
@@ -1702,9 +1701,13 @@ function liveEnd(g){
    to spin the cube with your finger; the knob springs back on release. */
 (function pad(){
   const area=$('pad'),knob=$('knob');let g=null;
+  /* wake the faded pad while it's in use, and let it settle back a moment after */
+  const wake=()=>{area.classList.add('awake');clearTimeout(area._sl)},sleep=()=>{clearTimeout(area._sl);area._sl=setTimeout(()=>area.classList.remove('awake'),1200)};
+  area.addEventListener('pointerenter',e=>{if(e.pointerType==='mouse')wake()});area.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse'&&!g)sleep()});
   const flash=d=>{area.querySelectorAll('.chev').forEach(c=>c.classList.toggle('on',c.dataset.d===d));setTimeout(()=>area.querySelectorAll('.chev').forEach(c=>c.classList.remove('on')),250)};
   area.addEventListener('pointerdown',e=>{
-    if(!playing||G.done||busy||e.button>0) return;e.preventDefault();
+    wake();
+    if(!playing||G.done||busy||e.button>0){sleep();return}e.preventDefault();
     try{area.setPointerCapture(e.pointerId)}catch(_){}
     g={x:e.clientX,y:e.clientY,ox:e.clientX,oy:e.clientY,moved:false};knob.style.transition='none';
   });
@@ -1718,6 +1721,7 @@ function liveEnd(g){
     liveMove(g,e.clientX,e.clientY,110);
   });
   const end=e=>{
+    sleep();
     if(!g) return;const h=g;g=null;
     knob.style.transition=reduce?'none':'transform .5s cubic-bezier(.2,1.8,.4,1)';knob.style.transform='';
     if(h.moved){liveEnd(h);return}
@@ -1904,10 +1908,10 @@ const TUT=[
   {text:'Words earn coins. After this, <b>New letters</b> costs coins.',reveal:['coins'],show:'coins',auto:3900},
   {text:'Letters cut off from the others can\'t be used. Tap <b>Collapse</b> to slide them together.',reveal:['collapse'],lay:[['front',-1,-1,'h'],['front',1,1,'i'],['right',1,1,'p']],wait:'collapse',el:'collapseBtn',hint:'tap'},
   {text:'Now they touch. Spell <b>HIP</b> to clear the cube.',target:'hip',hint:'trace'},
-  {text:'Cube cleared! Clearing every letter finishes a level, and <b>Left</b> shows how many remain. You\'re ready.',reveal:['left','words','level'],el:'coachGo',turn:true,end:true,hint:'tap'}
+  {text:'Cube cleared! Clearing every letter finishes a level, and <b>Left</b> shows how many remain. You\'re ready.',reveal:['left','meter','level','menu'],el:'coachGo',turn:true,end:true,hint:'tap'}
 ];
 /* interface parts the tutorial hands out one by one */
-const TUT_UI={pad:'pad',tray:'tray',undo:'undoBtn',reset:'trayReset',coins:'coinTile',collapse:'collapseBtn',left:'goalClear',words:'wordsPill',level:'lvlPill'};
+const TUT_UI={pad:'pad',tray:'tray',undo:'undoBtn',reset:'trayReset',coins:'coinTile',collapse:'collapseBtn',left:'goalClear',meter:'meter',level:'lvlPill',menu:'menuBtn'};
 const CUBE_LV=['bare','face','full'];
 function tutUI(i){
   const on=new Set(),stage=$('stage');let lv=0;
@@ -1917,8 +1921,8 @@ function tutUI(i){
     if(!off&&el.classList.contains('tut-off')){el.classList.remove('tut-off');el.classList.remove('tut-in');void el.offsetWidth;el.classList.add('tut-in');setTimeout(()=>el.classList.remove('tut-in'),700)}
     el.classList.toggle('tut-off',off);
   }
-  const dockOn=i==null||['pad','tray','reset','collapse'].some(n=>on.has(n));
-  document.querySelector('.dock').classList.toggle('tut-hide',!dockOn);
+  const panelOn=i==null||on.size>0;
+  $('hub').classList.toggle('tut-hide',!panelOn);
   void stage.offsetWidth; /* let freshly drawn squares settle first, so newly shown parts fade in */
   stage.classList.toggle('tut-bare',i!=null&&lv===0);stage.classList.toggle('tut-face',i!=null&&lv===1);
 }
@@ -2054,7 +2058,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261113-012242';
+const BUILD='20261113-013506';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
@@ -2317,7 +2321,8 @@ const INST=(()=>{
     get standalone(){return standalone()}
   };
 })();
-$('wordsPill').onclick=()=>{$('foundPanel').hidden=!$('foundPanel').hidden};
+/* the status line (level, letters left, or words in Endless) opens the list of words made */
+['wordsPill','lvlPill','goalClear'].forEach(id=>$(id).addEventListener('click',()=>{if(!T)$('foundPanel').hidden=!$('foundPanel').hidden}));
 /* save when the tab is hidden or closed, like an app going to the background */
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&playing)save()});
 window.addEventListener('pagehide',()=>{if(playing)save()});
