@@ -360,6 +360,11 @@ html.endless #goalClear,html.endless #collapseBtn{display:none}
 .coach.bump{animation:none}.coach.bump p{animation:deal .4s cubic-bezier(.2,1.5,.4,1) both}
 .finger{position:fixed;left:0;top:0;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;background:rgba(242,242,242,.88);box-shadow:0 0 0 5px rgba(242,242,242,.28),0 8px 18px rgba(0,0,0,.4);pointer-events:none;z-index:46;opacity:0;transition:opacity .2s,scale .2s cubic-bezier(.2,1.8,.4,1);scale:.6}
 .finger.on{opacity:1;scale:1}.finger.press{scale:.78}
+/* the hold demo: a ring fills round the fingertip while it waits, then stays lit as it drags */
+.finger::after{content:"";position:absolute;inset:-12px;border-radius:50%;border:3px solid var(--yellow);opacity:0;scale:.6;pointer-events:none}
+.finger.holding::after{animation:holdring .7s linear forwards}
+.finger.held::after{opacity:1;scale:1}
+@keyframes holdring{from{opacity:.2;scale:.6;clip-path:inset(0 0 100% 0)}to{opacity:1;scale:1;clip-path:inset(0 0 0 0)}}
 .sticker.coach-spot .tile{animation:spot 1.2s ease-in-out infinite}
 @keyframes spot{0%,100%{box-shadow:inset 0 0 0 calc(var(--s) * .03) rgba(255,214,10,.35)}50%{box-shadow:inset 0 0 0 calc(var(--s) * .07) var(--yellow)}}
 .coach-target{position:relative;animation:beckon 1.2s ease-in-out infinite!important}
@@ -1269,7 +1274,7 @@ function animate(sel,k,s,dur,after,fromDeg){
 }
 function turnCube(k,s,fromDeg){
   if((busy&&!fromDeg)||G.done) return;
-  if(T&&!T.step.turn){tutNo();return}
+  if(T&&(!T.step.turn||T.step.turn==='free')){tutNo();return}
   path=[];
   animate(()=>true,k,s,TURN_DUR,()=>tutEvent('turn'),fromDeg);
 }
@@ -1768,7 +1773,7 @@ function classicMove(g,cx,cy,span){
   const dx=cx-g.x,dy=cy-g.y;
   if(!g.live){
     if(busy||G.done||Math.hypot(dx,dy)<8) return;
-    if(T&&!T.step.turn){if(!g.nod){g.nod=true;tutNo()}return}
+    if(T&&(!T.step.turn||T.step.turn==='free')){if(!g.nod){g.nod=true;tutNo()}return}
     const[k,s]=dirFor([0,0,1],dx,dy),l=Math.hypot(dx,dy);
     g.live={k,s,ux:dx/l,uy:dy/l,deg:0,half:false,els:cubies(()=>true)};busy=true;path=[];paintSel();cubeEl.classList.add('moving');
   }
@@ -2006,7 +2011,7 @@ function size(){
    The tutorial never saves and never touches the player's real game. */
 let T=null;
 const VIEW={front:{n:[0,0,1],p:(u,v)=>[u,v,1]},right:{n:[1,0,0],p:(u,v)=>[1,v,-u]},top:{n:[0,-1,0],p:(u,v)=>[u,-1,v]},
-  left:{n:[-1,0,0],p:(u,v)=>[-1,v,u]}};
+  left:{n:[-1,0,0],p:(u,v)=>[-1,v,u]},bottom:{n:[0,1,0],p:(u,v)=>[u,1,v]}};
 /* Built up one idea at a time. Each step can:
    cube    'bare' (just the letters), 'face' (one 3x3 side) or 'full'; once shown it stays shown
    reveal  interface parts that appear from this step on (they pop in as they arrive):
@@ -2019,9 +2024,12 @@ const TUT=[
   {text:'Drag your finger across the letters to spell <b>CAT</b>.',cube:'bare',lay:[['front',-1,0,'c'],['front',0,0,'a'],['front',1,0,'t']],target:'cat',hint:'trace'},
   {text:'Letters touching at the corners count too. Spell <b>BIG</b>.',cube:'face',lay:[['front',-1,-1,'b'],['front',0,0,'i'],['front',1,1,'g']],target:'big',hint:'trace'},
   {text:'It\'s a cube! Words can bend over an edge onto the next side. Spell <b>SUN</b>.',cube:'full',lay:[['front',0,0,'s'],['front',1,0,'u'],['right',-1,0,'n']],target:'sun',hint:'trace'},
-  {text:'More letters are hiding on the other side. <b>Swipe</b> beside the cube, or tap the <b>turn pad</b>, to turn it.',reveal:['pad'],lay:[['left',-1,0,'f'],['left',0,0,'u'],['left',1,0,'n']],wait:'see',turn:true,el:'pad',hint:'swipe',
+  {text:'More letters are hiding on the other side. <b>Swipe</b> beside the cube to turn it.',reveal:['pad'],lay:[['left',-1,0,'f'],['left',0,0,'u'],['left',1,0,'n']],wait:'see',turn:true,el:'pad',hint:'swipe',
    retry:'Keep turning. The letters are on another side.'},
   {text:'There they are. Spell <b>FUN</b>.',target:'fun',hint:'trace'},
+  {text:'You can also roll the cube any way. <b>Press and hold</b> beside it until it dims, then drag.',lay:[['bottom',-1,0,'j'],['bottom',0,0,'o'],['bottom',1,0,'y']],wait:'see',turn:'free',hint:'hold',
+   retry:'Keep rolling. The letters are underneath.'},
+  {text:'Spell <b>JOY</b>.',target:'joy',hint:'trace'},
   {text:'This word is missing a letter. Tap the <b>G</b> in your free letters, then tap the glowing square.',reveal:['tray'],lay:[['front',-1,0,'d'],['front',0,0,'o']],drop:['front',1,0],tray:['g'],trayPick:'g',wait:'place',hint:'place'},
   {text:'Now spell <b>DOG</b>.',target:'dog',hint:'trace'},
   {text:'A free letter can also swap with one on the cube. Tap the <b>S</b>, then tap the <b>G</b>.',lay:[['front',-1,0,'b'],['front',0,0,'u'],['front',1,0,'g']],drop:['front',1,0],tray:['s'],trayPick:'s',wait:'place',hint:'place'},
@@ -2123,14 +2131,14 @@ function tutEvent(type){
   const ok=(type==='word'&&st.target)||type===st.wait;
   if(!ok) return;
   if(type==='word') status();
-  T.hintAt=Infinity;finger.classList.remove('on','press');
+  T.hintAt=Infinity;finger.classList.remove('on','press','holding','held');
   setTimeout(()=>{if(T&&T.step===st)tutStep(Math.min(TUT.length-1,T.i+1))},type==='word'?650:type==='place'?700:450);
 }
 function endTutorial(){
   if(!T) return;
   const then=T.then;T=null;$('coach').hidden=true;tutUI(null);
   document.querySelectorAll('.coach-target').forEach(el=>el.classList.remove('coach-target'));
-  finger.classList.remove('on','press');$('preview').innerHTML='';
+  finger.classList.remove('on','press','holding','held');$('preview').innerHTML='';
   then();
 }
 $('coachSkip').onclick=endTutorial;$('coachGo').onclick=endTutorial;$('coachNext').onclick=()=>{if(T)tutStep(T.i+1)};
@@ -2139,13 +2147,21 @@ $('coachSkip').onclick=endTutorial;$('coachGo').onclick=endTutorial;$('coachNext
 const finger=document.createElement('div');finger.className='finger';finger.setAttribute('aria-hidden','true');document.body.appendChild(finger);
 let fingerRunning=false;
 function fingerLoop(){
-  if(!T){fingerRunning=false;finger.classList.remove('on','press');return}
+  if(!T){fingerRunning=false;finger.classList.remove('on','press','holding','held');return}
   requestAnimationFrame(fingerLoop);
   const st=T.step,now=performance.now();
-  if(busy||path.length||gesture||!st.hint||now<T.hintAt||!$('pause').hidden){finger.classList.remove('on','press');if(path.length||gesture)T.hintAt=now+1600;return}
+  if(busy||path.length||gesture||!st.hint||now<T.hintAt||!$('pause').hidden){finger.classList.remove('on','press','holding','held');if(path.length||gesture)T.hintAt=now+1600;return}
   let pts=[],taps=false;
   const at=id=>elById[id]?centerOf(elById[id]):null;
   if(st.hint==='trace') pts=(T.ids||[]).map(at).filter(Boolean);
+  let hold=false;
+  if(st.hint==='hold'){
+    const r=$('stage').getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,L=r.width*.2,lay=G.stickers.filter(s=>s.ch);
+    const snapOf=(dx,dy)=>{const l=Math.hypot(dx,dy);return nearest(M3.mul(M3.mul(VIEW_T,M3.axis([-dy/l,dx/l,0],Math.PI/2)),VIEW_M))};
+    const shows=P=>lay.every(s=>VISIBLE.includes(key(M3.apply(P,s.n).map(Math.round))));
+    const dirs=[[0,-1],[1,-1],[-1,-1],[1,0],[-1,0],[0,1],[1,1],[-1,1]],good=dirs.find(([dx,dy])=>shows(snapOf(dx,dy)))||dirs[0];
+    const gl=Math.hypot(...good),dx=good[0]/gl,dy=good[1]/gl,ox=-r.width*.36,oy=-r.height*.36;
+    pts=[[cx+ox,cy+oy],[cx+ox+dx*2*L,cy+oy+dy*2*L]];hold=true}
   if(st.hint==='swipe'){
     /* swipe the way that actually brings the hidden letters into view (sideways first, then up or down) */
     /* a drag of 40% of the stage is a quarter turn; simulate each direction's snap and show one that works */
@@ -2163,7 +2179,16 @@ function fingerLoop(){
   if(st.hint==='tap'&&st.el&&!$(st.el).hidden){taps=true;pts=[centerOf($(st.el))]}
   if(!pts.length){finger.classList.remove('on');return}
   let x,y,on=true,press=false;
-  if(taps){
+  if(hold){
+    /* appear, press and hold (a ring fills), drag slowly, lift, rest */
+    const cycle=300+700+900+350+900,k=(now-T.hintAt)%cycle;
+    if(k<300){[x,y]=pts[0]}
+    else if(k<1000){[x,y]=pts[0];press=true}
+    else if(k<1900){const f=(k-1000)/900,e=f<.5?2*f*f:1-Math.pow(-2*f+2,2)/2;x=pts[0][0]+(pts[1][0]-pts[0][0])*e;y=pts[0][1]+(pts[1][1]-pts[0][1])*e;press=true}
+    else if(k<2250){[x,y]=pts[1]}
+    else on=false;
+    finger.classList.toggle('holding',on&&k>=300&&k<1000);finger.classList.toggle('held',on&&k>=1000&&k<1900);
+  } else if(taps){
     /* each tap: arrive, press, release; then a rest before the loop starts again */
     const per=760,cycle=pts.length*per+900,k=(now-T.hintAt)%cycle,j=Math.floor(k/per),f=k-j*per;
     if(j>=pts.length) on=false;
@@ -2185,7 +2210,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261113-023738';
+const BUILD='20261113-024135';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
