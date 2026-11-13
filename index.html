@@ -200,7 +200,12 @@ html.endless #goalClear,html.endless #collapseBtn{display:none}
 .found .none{color:var(--fog);font-size:14px;font-weight:600;padding:4px 6px}
 
 /* level card */
-.sheet{position:absolute;inset:4%;display:grid;place-items:center;z-index:6}
+/* the level-end card covers the whole screen, above the bottom panel, with the game dimmed behind it.
+   On a short screen it scrolls, so the Next button is always reachable. */
+.sheet{position:fixed;inset:0;z-index:30;display:grid;place-items:safe center;overflow-y:auto;overscroll-behavior:contain;
+  padding:calc(var(--sa-t) + 14px) max(16px,var(--sa-r)) calc(var(--sa-b) + 14px) max(16px,var(--sa-l));
+  background:rgba(var(--scrim),.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);animation:sheetIn .3s ease both}
+@keyframes sheetIn{from{background:rgba(var(--scrim),0)}}
 .card{width:min(100%,330px);background:var(--mod);border-radius:28px;padding:8px;display:grid;gap:8px;box-shadow:0 30px 60px rgba(0,0,0,.5);animation:dealIn .6s cubic-bezier(.2,1.4,.4,1) both}
 .card .ttl{background:var(--yellow);color:var(--ink);border-radius:20px;padding:14px}
 .card h2{margin:0;font-weight:800;font-size:28px;letter-spacing:-.02em;line-height:1;text-wrap:balance}
@@ -222,7 +227,6 @@ html.endless #goalClear,html.endless #collapseBtn{display:none}
 @keyframes perfFade{from{opacity:0}}
 @media (max-height:720px){
   .perf{gap:2px}.perf svg{height:70px}.perf .score{font-size:38px}.perf .cap{font-size:12.5px}.perf .tip{font-size:11px}
-  .sheet .card{position:relative;top:-28px}
   .stats{gap:3px}.stats div{font-size:13px}.card .ttl{padding:10px 14px}.card h2{font-size:24px}.card .btn{padding:12px}
 }
 .stats div{display:flex;justify-content:space-between;gap:12px;font-size:14px;font-weight:600;animation:deal .4s cubic-bezier(.2,1.5,.4,1) both;animation-delay:calc(var(--i) * 60ms + .25s)}
@@ -2210,7 +2214,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261113-024135';
+const BUILD='20261113-053531';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
@@ -2310,6 +2314,8 @@ $('pHow').onclick=()=>openInfo('play');
 $('pSettings').onclick=()=>openInfo('tune');
 $('pMenu').onclick=showTitle;
 $('pause').addEventListener('click',e=>{if(e.target===$('pause'))resume()});
+/* the level-end card lives at the top of the page, so it covers everything (the cube area clips anything inside it) */
+document.body.appendChild($('sheet'));
 /* ---------- add to home screen ----------
    Android and desktop Chrome/Edge hand us an install event; the Install button replays the browser's
    own dialog. iPhones can't be installed from a page, so they get a short guide to Share > Add to Home
