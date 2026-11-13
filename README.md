@@ -1,7 +1,7 @@
 # Wubix
 
 A word puzzle on a 3x3 letter cube. Trace words across faces, twist rows and columns, clear every letter,
-or play a Run: the cube never empties, each round has a coin target, and clearing it earns a stamp
+or play a Run: each round has a coin target on a fresh cube, and clearing it earns a stamp
 that boosts matching words.
 
 Live at https://hellopersonality.github.io/WordProm/

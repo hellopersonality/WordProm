@@ -164,10 +164,10 @@ html.calm .cube.grab{animation:none}
 .tile .ch{display:block;transition:transform .42s cubic-bezier(.3,.1,.2,1)}
 .fresh .tile{animation:fade .18s ease-out}
 @keyframes fade{from{opacity:.5}}
-/* endless: fresh letters drop into the squares a word just left */
+/* letters put back by undo drop into their squares */
 .sticker.born .tile{animation:born .42s cubic-bezier(.3,1.6,.5,1) both;animation-delay:calc(var(--b,0)*45ms)}
 @keyframes born{from{transform:translateZ(calc(var(--s)*.04)) scale(.2) rotate(-25deg);opacity:0}}
-html.endless #goalClear,html.endless #collapseBtn{display:none}
+html.endless #goalClear{display:none}
 .sticker.drop-ok .tile{box-shadow:inset 0 0 0 calc(var(--s) * .05) var(--yellow)}
 .trail{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
 .trail line{stroke-linecap:round}
@@ -627,7 +627,7 @@ html.calm .btn.primary::after,html.calm #tContinue::after,html.calm #tNew::after
       <li><b>Collapse</b>Slides each face's letters together so stranded ones touch again.</li>
       <li><b>End early</b>When nothing is left to spell and only a few letters remain, pay coins to clear them and finish the level.</li>
       <li><b>No help</b>Clear the cube without ending early for an extra bonus.</li>
-      <li><b>Run</b>The cube never empties. Each round gives you 8 words to earn a coin target, and the target rises every round. Miss it and the run ends.</li>
+      <li><b>Run</b>Each round gives you 8 words to earn a coin target on a fresh cube, and the target rises every round. Miss it and the run ends. Empty the cube for a bonus and a new one.</li>
       <li><b>Stamps</b>Clear a round to pick a stamp. A stamp adds to or multiplies what a word earns when the word matches it. You can hold five. Tap one to see what it does or to sell it.</li>
     </ul>
     <div class="tune" id="tune" hidden></div>
@@ -921,7 +921,7 @@ function hud(){
   setCoins(G.coins);drawRack();
   fitBar(R);
   const fc=Math.max(0,cfg.freeCollapses-(G.collapses||0)),cs=$('collapseSub');
-  cs.textContent=fc?(fc>1?`${fc} free`:'free'):coinsTxt(cfg.collapseCost);cs.classList.toggle('free',!!fc);
+  cs.textContent=fc?(fc>1?`${fc} free`:'free'):coinsTxt(collapseCost());cs.classList.toggle('free',!!fc);
   {const free=!!(T&&T.step.freeReset),rs=$('trayResetSub');rs.textContent=free?'free':coinsTxt(resetCost());rs.classList.toggle('free',free)}
   {const u=$('undoBtn'),n=(G.undo||[]).length;u.disabled=!n||G.done;u.title=n?`Undo the last ${G.undo[n-1].t==='w'?'word':'placed letter'}${cfg.undoCost?` · ${cfg.undoCost} coins`:''}`:'Nothing to undo'}
   if(!G.tray) G.tray=makeTray();
@@ -1274,7 +1274,8 @@ function status(){
   if(G.note){const nt=G.note;G.note=null;setNotice(nt.msg,nt.tone,nt.actions);return}
   if(!anyWord()){
     const left=G.stickers.filter(s=>s.ch).length,acts=[];
-    if(left<=cfg.sweepMax&&G.coins>=left*cfg.sweepCost) acts.push([`End early · ${left*cfg.sweepCost}`,sweep,true]);
+    if(isRun()) acts.push(['New cube · costs 1 word',runSkipCube,true]);
+    else if(left<=cfg.sweepMax&&G.coins>=left*cfg.sweepCost) acts.push([`End early · ${left*cfg.sweepCost}`,sweep,true]);
     setNotice('No words left','warn',acts);return;
   }
   const lone=stranded();
@@ -1372,7 +1373,7 @@ let NB=null;
 /* recomputed each time: turns move stickers, so neighbours change */
 function neighbours(){NB={};G.stickers.forEach(a=>NB[a.id]=G.stickers.filter(b=>b!==a&&adj(a,b)).map(b=>b.id));return NB}
 function stranded(){const nb=neighbours();return G.stickers.filter(s=>s.ch&&!nb[s.id].some(id=>G.stickers[id].ch)).length}
-const canCollapse=()=>(G.collapses||0)<cfg.freeCollapses||G.coins>=cfg.collapseCost;
+const canCollapse=()=>(G.collapses||0)<cfg.freeCollapses||G.coins>=collapseCost();
 function collapseLetters(){
   const nb=neighbours(), faces=Object.keys(FACE_NAME), occ=new Set(G.stickers.filter(s=>s.ch).map(s=>s.id));
   /* squares in a fixed on-screen order, so ties settle the same way however the cube was turned */
@@ -1425,11 +1426,11 @@ function collapse(){
   if(busy||G.done) return;
   if(T&&T.step.wait!=='collapse') return;
   const free=(G.collapses||0)<cfg.freeCollapses;
-  if(!free&&G.coins<cfg.collapseCost){toast(`A collapse costs ${cfg.collapseCost} coins. Make words to earn more.`);return}
+  if(!free&&G.coins<collapseCost()){toast(`A collapse costs ${collapseCost()} coins. Make words to earn more.`);return}
   const before=stranded();
   const moved=collapseLetters();
   if(!moved){render();toast('The letters are already as close together as they can get.');return}
-  if(!free){G.coins-=cfg.collapseCost;G.spent+=cfg.collapseCost}
+  if(!free){G.coins-=collapseCost();G.spent+=collapseCost()}
   G.collapses=(G.collapses||0)+1;path=[];clearUndo();
   render();
   const after=stranded();
@@ -1522,7 +1523,7 @@ function accept(word,used){
   }
   const fb=nNew*cfg.faceBonus;
   const pts=used.map(st=>elById[st.id]).filter(Boolean).map(centerOf);
-  G.coins+=c+fb;G.earned+=c;G.found.push({w:word,c,nf});if(isEndless()&&G.found.length%20===0)INST.nudge();G.undo[G.undo.length-1].c=c;
+  G.coins+=c+fb;G.earned+=c;G.found.push({w:word,c,nf});if(isRun()&&G.run.total%20===0)INST.nudge();G.undo[G.undo.length-1].c=c;
   if(nNew){G.faceBonus=(G.faceBonus||0)+fb;G.facesPaid=paidBefore+nNew;Object.assign(G.undo[G.undo.length-1],{fb,paidBefore})}
   preview(word,'ok',run?'+'+ev.base:[nf>1?`${nf} faces`:'',nNew?`face cleared${fb?` +${fb}`:''}`:''].filter(Boolean).join(' · '));
   if(word.length>=6||nNew){const cx=pts.reduce((a,q)=>a+q[0],0)/pts.length,cy=pts.reduce((a,q)=>a+q[1],0)/pts.length;for(let k=0;k<(nNew?5:3);k++) setTimeout(()=>sparkle(cx+(Math.random()-.5)*110,cy+(Math.random()-.5)*80,12+Math.random()*12),k*90)}
@@ -1537,7 +1538,7 @@ function accept(word,used){
   used.forEach((s,i)=>{const el=elById[s.id];if(!el) return;el.classList.add('going');
     setTimeout(()=>{el.classList.add('pop');letterBurst(el,i)},i*step)});
   paintSel();
-  setTimeout(()=>{if(isEndless())refill(used);else used.forEach(s=>s.ch=null);busy=false;render();faceFx.forEach(flashFace);progress();
+  setTimeout(()=>{used.forEach(s=>{s.ch=null;delete s.tp});busy=false;render();faceFx.forEach(flashFace);progress();
     const t0=lastInput;setTimeout(()=>{if(lastInput===t0)autoTurn()},reduce?0:420)},reduce?0:Math.max((used.length-1)*step+230,run?juiceDur(ev):0));
 }
 /* after a word, if the three faces in view have no letters left, turn the cube once toward the side
@@ -1569,23 +1570,6 @@ function letterBurst(el,i){
   }
 }
 function flashFace(fk){G.stickers.filter(s=>key(s.n)===fk).forEach((s,i)=>{const el=elById[s.id];if(!el) return;el.style.setProperty('--fi',i);el.classList.add('fclr');setTimeout(()=>el.classList.remove('fclr'),1500)})}
-/* endless: the squares a word leaves are filled straight away with a new hidden word (or words)
-   along a fresh path through those same squares, so there is always something to spell there */
-function refill(cells){
-  cells.forEach(c=>{c.ch=null;delete c.tp});
-  const found=new Set(G.found.map(f=>f.w)),order=[];
-  for(let guard=0;guard<12&&cells.some(c=>!c.ch);guard++){
-    const left=cells.filter(c=>!c.ch).length;let placed=false;
-    for(let L=Math.min(left,9);L>=2&&!placed;L--){
-      const pool=(BYLEN[L]||[]).filter(w=>!found.has(w));if(!pool.length) continue;
-      const p=randomPath(cells,L);if(!p) continue;
-      const w=pickNear(pool,.44);p.forEach((c,i)=>{c.ch=w[i];order.push(c)});found.add(w);
-      G.solution.push({word:w,ids:p.map(c=>c.id),done:false});placed=true;
-    }
-    if(!placed) cells.filter(c=>!c.ch).forEach(c=>{c.ch=pick(BAG);order.push(c)});
-  }
-  order.forEach((c,i)=>c.born=i);
-}
 function progress(){
   if(G.mode==='tutorial'){tutEvent('word');return}
   if(isRun()){runProgress();return}
@@ -1593,7 +1577,7 @@ function progress(){
   status();save();
 }
 /* ---------- run mode (was Endless) ----------
-   A run is a string of rounds on a cube that never empties. Each round gives a fixed number of words
+   A run is a string of rounds, each on a fresh cube. Each round gives a fixed number of words
    to earn a coin target; the target rises every round. Clearing a round offers three stamps to pick
    from. Stamps sit in a rack of five above the bottom panel and add to, or multiply, what a word
    earns when the word matches them: coins = (base + every "+") x every "x", stamps read left to right.
@@ -1669,6 +1653,7 @@ function resetCost(){
   const c=Math.max(cfg.trayResetCost,round5(G.run.target*.5));
   return hasStamp('recyc')?round5(c/2):c;
 }
+const collapseCost=()=>isRun()?Math.max(cfg['collapseCost'],round5(G.run.target*.5)):cfg['collapseCost'];
 const rerollCost=()=>round5(Math.max(15,G.run.target*.2))*(1+G.run.rr);
 function getBest(){try{return parseInt(localStorage.getItem(RUN_BEST),10)||0}catch(e){return 0}}
 function setBest(n){if(n>getBest()){try{localStorage.setItem(RUN_BEST,String(n))}catch(e){}}}
@@ -1700,15 +1685,32 @@ function runCommit(word,ev){
   ev.hits.forEach(h=>{if(h.src==='glass'&&Math.random()<1/6){const g=R.stamps.find(s=>s.id==='glass');if(g)gone.add(g)}});
   const idx=R.stamps.map((s,i)=>gone.has(s)?i:-1).filter(i=>i>=0);
   if(gone.size) R.stamps=R.stamps.filter(s=>!gone.has(s));
-  R.lastLen=len;R.made++;R.left--;R.earned+=ev.total;
+  R.lastLen=len;R.made++;R.left--;R.earned+=ev.total;R.total=(R.total||0)+1;
   if(!R.top||ev.total>R.top.c) R.top={w:word,c:ev.total};
   return idx;
 }
 function runProgress(){
-  const R=G.run;
+  const R=G.run,empty=!G.stickers.some(s=>s.ch);
+  /* emptying the cube pays a bonus that counts toward the round */
+  let bonus=0;
+  if(empty){bonus=round5(Math.max(25,R.target*.15));G.coins+=bonus;R.earned+=bonus}
   if(R.earned>=R.target){roundClear();return}
   if(R.left<=0){runOver();return}
+  if(empty){runCube();render(true);introSpin();preview('cube\u00a0cleared','ok','+'+bonus);SFX.face();HAP.face();driftBurst(10)}
   status();save();
+}
+/* a fresh cube for the same run: the stamps, coins, tray and round carry over */
+function runCube(){
+  const keep={run:G.run,tray:G.tray,spent:G.spent,earned:G.earned},sig=rackSig;
+  newLevel(1,G.coins,'endless');
+  Object.assign(G,keep,{done:false});rackSig=sig;
+}
+/* nothing left to spell: trade one of the round's words for a fresh cube */
+function runSkipCube(){
+  const R=G.run;if(busy||G.done||R.phase!=='play') return;
+  R.left--;clearUndo();clearNotice();
+  if(R.left<=0){runOver();return}
+  runCube();render(true);introSpin();status();save();
 }
 function roundClear(){
   const R=G.run;G.done=true;path=[];paintSel();clearUndo();clearNotice();
@@ -1729,8 +1731,10 @@ function nextRound(){
   R.round++;R.target=runTarget(R.round);R.earned=0;R.made=0;R.bought=false;R.left=RUN_WORDS+(hasStamp('extra')?2:0);
   R.phase='play';R.offer=null;R.info=null;R.rr=0;
   R.stamps.forEach(s=>{if(s.id==='letter')s.v=newLetter(s.v)});
+  const fresh=R.round>1;if(fresh) runCube();
   G.done=false;G.failed=false;$('sheet').hidden=true;runSheetOff();clearUndo();
-  hud();status();save();
+  if(fresh){render(true);introSpin()}else hud();
+  status();save();
   preview('round\u00a0'+R.round,'ok',`${R.target} coins in ${R.left} words`);SFX.land();
 }
 
@@ -1886,7 +1890,7 @@ function showOver(){
   document.querySelector('#sheet .card').classList.add('fail');$('perf').hidden=true;
   $('sheetTitle').textContent='Run over';
   const m=$('failMsg');m.hidden=false;m.textContent=`Round ${R.round} needed ${R.target} coins. You made ${R.earned}.`;
-  $('sheetStats').innerHTML=statRows([['Rounds cleared',`${R.round-1}`],['Best run',`${best} round${best===1?'':'s'}`],['Words made',`${G.found.length}`],...(R.top?[['Top word',`${R.top.w.toUpperCase()} +${R.top.c}`,'pos']]:[])]);
+  $('sheetStats').innerHTML=statRows([['Rounds cleared',`${R.round-1}`],['Best run',`${best} round${best===1?'':'s'}`],['Words made',`${R.total||0}`],...(R.top?[['Top word',`${R.top.w.toUpperCase()} +${R.top.c}`,'pos']]:[])]);
   $('nextBtn').textContent='New run';SFX.lose();HAP.lose();
   $('sheet').hidden=false;hud();$('nextBtn').focus({preventScroll:true});
 }
@@ -2596,7 +2600,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261113-063447';
+const BUILD='20261113-064028';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
