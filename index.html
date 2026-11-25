@@ -512,8 +512,16 @@ html.calm .btn.primary::after,html.calm #tContinue::after,html.calm #tNew::after
 .swirl{position:absolute;left:0;top:0;width:100%;height:100%;z-index:-2;pointer-events:none;image-rendering:pixelated;image-rendering:crisp-edges;background:var(--ground)}
 .swirl.fixed{position:fixed}
 
+/* ---------- juice layer (CloverPit-style) ---------- */
+.jx{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}
+.jx-front{z-index:46}
+.jx-back{z-index:-1}
+.jt{display:inline-block;will-change:transform}
+.preview .l{-webkit-text-stroke:.2em #0A0A0A;paint-order:stroke fill}
+.preview.ok .l{-webkit-text-stroke-width:.24em}
+.preview .tag{transform-origin:50% 60%}
 </style>
-</head>
+
 <body>
 <div class="bg" aria-hidden="true"></div>
 <div class="ripples" aria-hidden="true"><svg id="ripples"></svg></div>
@@ -904,17 +912,17 @@ function juice(el){if(!el||reduce)return;el.classList.remove('juice');void el.of
 const coinsTxt=n=>n?`${n} coin${n===1?'':'s'}`:'free';
 function hud(){
   const left=G.stickers.filter(s=>s.ch).length, total=G.stickers.length, made=G.found.length;
-  if(lastHud.level!==undefined&&lastHud.level!==G.level) juice($('lvlPill'));
+  if(lastHud.level!==undefined&&lastHud.level!==G.level){juice($('lvlPill'));JX.hit($('lvl'),1.4)}
   document.documentElement.classList.toggle('endless',isEndless());
   const R=isRun()?G.run:null;
   $('lvl').textContent=R?Math.max(1,R.round):G.level;$('lvlPill').dataset.len=String($('lvl').textContent).length;$('lvlPill').title=R?'Round':'Level';$('lvlTag').textContent=R?'Round':'Level';
   $('wordsVal').textContent=R?R.left:made;$('wordsPill').title=R?'Words left this round. Tap to see the words you made.':'Words made. Tap to see them.';
-  if(lastHud.made!==undefined&&made>lastHud.made&&isEndless()) juice($('wordsPill'));
-  if(R){const go=Math.max(0,R.target-R.earned),gv=$('goalVal');if(gv.textContent!==String(go)){gv.textContent=go;if(lastHud.made!==undefined)juice($('goalPill'))}
+  if(lastHud.made!==undefined&&made>lastHud.made&&isEndless()){juice($('wordsPill'));JX.hit($('wordsVal'),1)}
+  if(R){const go=Math.max(0,R.target-R.earned),gv=$('goalVal');if(gv.textContent!==String(go)){gv.textContent=go;if(lastHud.made!==undefined){juice($('goalPill'));JX.hit(gv,1.2)}}
     $('goalPill').title=`${R.earned} of ${R.target} coins this round`;
     }
   $('lettersVal').textContent=left;
-  if(lastHud.left!==undefined&&left!==lastHud.left) juice($('goalClear'));
+  if(lastHud.left!==undefined&&left!==lastHud.left){juice($('goalClear'));JX.hit($('lettersVal'),.9)}
   $('ring').style.width=(R?Math.min(100,100*R.earned/R.target):100*left/total).toFixed(1)+'%';
   $('goalClear').title=left===0?'Cube cleared':`${left} letters left`;
   $('minLenTxt').textContent=cfg.minLen;
@@ -949,11 +957,142 @@ function drawCoins(){const t=fmtCoins(shown),c=$('coins');c.textContent=t;c.pare
 function setCoins(v){
   if(shown===null){shown=v;drawCoins();return}
   if(inFlight>0||v===shown) return;
-  if(v<shown){const t=$('coinTile');t.classList.remove('spend');void t.offsetWidth;t.classList.add('spend')}
+  if(v<shown){const t=$('coinTile');t.classList.remove('spend');void t.offsetWidth;t.classList.add('spend');JX.hit($('coins'),1)}
   const from=shown,d=v-from,t0=performance.now(),dur=reduce?0:Math.min(700,250+Math.abs(d)*6),id=++coinTween;
   (function step(now){if(id!==coinTween)return;const k=dur?Math.min(1,(now-t0)/dur):1;shown=Math.round(from+d*(1-Math.pow(1-k,3)));drawCoins();if(k<1)requestAnimationFrame(step)})(t0);
 }
 /* coins burst from where they were earned and arc into the counter, each one ticking it up */
+/* ---------- juice: CloverPit-style sticker pop-ups, lagging colour shadows, stepped palette, shake ----------
+   Everything here is presentation only. One canvas in front of the game draws the sticker pop-ups and the
+   tracing rings; one behind the app draws the cube's colour shadow when it turns. Numbers and labels in the
+   HUD get a spring and a colour shadow that trails them (a text-shadow, so no clones). The loop only runs
+   while something is moving, and none of it runs with Reduce motion on. */
+const JX=(()=>{
+  const PAL=['#ff3df0','#ff3b2f','#ff8a1f','#ffd92e','#7dff4a','#3ff0ff','#3d6bff','#a34dff'];
+  const RGB=PAL.map(h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)));
+  const pal=i=>PAL[((i%8)+8)%8], rgba=(i,a)=>{const c=RGB[((i%8)+8)%8];return `rgba(${c[0]},${c[1]},${c[2]},${a.toFixed(3)})`};
+  const C={lag:.5,offset:7,cycleHz:8,font:"800 SIZEpx Figtree, ui-rounded, system-ui, sans-serif"};
+  const step=()=>Math.floor(performance.now()/1000*C.cycleHz)%8;
+  const off=()=>reduce;
+  /* springs */
+  const spring=(x,t=x,k=400,z=.4)=>({x,v:0,t,k,z});
+  const ss=(s,dt)=>{const c=2*s.z*Math.sqrt(s.k);s.v+=(-s.k*(s.x-s.t)-c*s.v)*dt;s.x+=s.v*dt};
+  const lagK=()=>900-840*C.lag;
+  class J{
+    constructor(x,y,o={}){
+      this.p={x:spring(x,x,o.k??500,o.z??.35),y:spring(y,y,o.k??500,o.z??.35)};
+      this.s=spring(o.from??1,1,o.sk??420,o.sz??.3);this.r=spring(0,0,300,.3);
+      this.kick={x:spring(0,0,260,.4),y:spring(0,0,260,.4)};
+      this.sh=[0,1,2].map(()=>({x:spring(x),y:spring(y),s:spring(o.from??1)}));
+      this.ci=o.ci??0;this.highlight=0;
+    }
+    moveTo(x,y){this.p.x.t=x;this.p.y.t=y;return this}
+    punch(v=10){this.s.v+=v;return this}
+    wobble(a=.35){this.r.x=(Math.random()<.5?-1:1)*a;return this}
+    shove(f=260,ang){const a=ang??Math.random()*6.283;this.kick.x.v+=Math.cos(a)*f;this.kick.y.v+=Math.sin(a)*f;return this}
+    pop(){this.s.x=0;this.s.t=1;return this.punch(6).wobble()}
+    hide(){this.s.t=0;this.s.k=600;this.s.z=.9;return this}
+    get motion(){const h=this.sh[0];return Math.min(1,(Math.abs(this.p.x.x-h.x.x)+Math.abs(this.p.y.x-h.y.x))/14+Math.abs(this.p.x.v)/900+Math.abs(this.p.y.v)/900+Math.abs(this.kick.x.x)/40+Math.abs(this.kick.y.x)/40)}
+    get settled(){return this.motion<.02&&Math.abs(this.s.x-this.s.t)<.003&&Math.abs(this.s.v)<.05&&Math.abs(this.r.x)<.003}
+    update(dt){
+      for(const s of [this.p.x,this.p.y,this.s,this.r,this.kick.x,this.kick.y]) ss(s,dt);
+      this.sh.forEach((h,j)=>{const k=lagK()*Math.pow(.6,j);h.x.k=h.y.k=h.s.k=k;h.x.z=h.y.z=h.s.z=.55;
+        h.x.t=this.p.x.x;h.y.t=this.p.y.x;h.s.t=this.s.x;ss(h.x,dt);ss(h.y,dt);ss(h.s,dt)});
+    }
+    shXf(j,base=C.offset){const h=this.sh[j],o=base*(j+1);
+      return {x:h.x.x+o+this.kick.x.x*(j+1)*.06,y:h.y.x+o+this.kick.y.x*(j+1)*.06,s:Math.max(0,h.s.x),r:this.r.x*.7}}
+    xf(){return {x:this.p.x.x,y:this.p.y.x,s:Math.max(0,this.s.x),r:this.r.x}}
+  }
+  /* canvases */
+  const mk=(cls)=>{const c=document.createElement('canvas');c.className='jx '+cls;c.setAttribute('aria-hidden','true');return c};
+  const front=mk('jx-front'),back=mk('jx-back');
+  document.body.appendChild(front);document.querySelector('.ripples').after(back);
+  const fc=front.getContext('2d'),bc=back.getContext('2d');let dpr=1;
+  function fit(){dpr=Math.min(2,devicePixelRatio||1);for(const c of [front,back]){c.width=Math.round(innerWidth*dpr);c.height=Math.round(innerHeight*dpr)}}
+  fit();addEventListener('resize',fit);
+  /* state */
+  const pops=[],rings=[],texts=new Map();let trauma=0,running=false,last=0,dirty=false;
+  const cube=new J(0,0,{k:340,z:.32});let cubeHi=0,dragging=false;
+  const wobbleEls=[$('stageWrap'),$('hub'),$('rack')];
+  function kick(){if(!running){running=true;last=performance.now();requestAnimationFrame(loop)}}
+  /* a HUD number or label: hop, punch and a colour shadow that trails it */
+  function textJ(el){let t=texts.get(el);if(!t){t={el,j:new J(0,0,{k:520,z:.3,sk:480,sz:.28}),off:3,ci:Math.floor(Math.random()*8)};el.classList.add('jt');texts.set(el,t)}return t}
+  function drawSticker(ctx,j,text,size,layers){
+    const st=step()+j.ci;ctx.font=C.font.replace('SIZE',size);ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';ctx.lineWidth=size*.36;
+    for(let L=Math.min(layers,3)-1;L>=0;L--){const t=j.shXf(L,C.offset*size/44);
+      ctx.save();ctx.translate(t.x,t.y);ctx.rotate(t.r);ctx.scale(t.s,t.s);ctx.strokeStyle=ctx.fillStyle=pal(st+5+L*2);ctx.strokeText(text,0,0);ctx.fillText(text,0,0);ctx.restore()}
+    const t=j.xf();ctx.save();ctx.translate(t.x,t.y);ctx.rotate(t.r);ctx.scale(t.s,t.s);
+    ctx.strokeStyle=pal(st);ctx.strokeText(text,0,0);ctx.fillStyle=pal(st+2);ctx.fillText(text,0,0);ctx.restore();
+  }
+  function hexPath(ctx,cx,cy,R){ctx.beginPath();for(let i=0;i<6;i++){const a=Math.PI/2+i*Math.PI/3,x=cx+Math.cos(a)*R,y=cy+Math.sin(a)*R;i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.closePath()}
+  function loop(now){
+    const raw=Math.min(.05,(now-last)/1000);last=now;const n=Math.ceil(raw*240)||1,d=raw/n;
+    for(let i=0;i<n;i++){pops.forEach(p=>{p.age+=d;if(p.age>p.life)p.j.hide();p.j.update(d)});cube.update(d);texts.forEach(t=>t.j.update(d))}
+    for(let i=pops.length-1;i>=0;i--){const p=pops[i];if(p.age>p.life&&p.j.s.x<.02&&p.j.sh.every(h=>h.s.x<.02))pops.splice(i,1)}
+    for(let i=rings.length-1;i>=0;i--){rings[i].age+=raw;if(rings[i].age>rings[i].life)rings.splice(i,1)}
+    trauma=Math.max(0,trauma-raw*1.6);
+    const sh=trauma*trauma*16,ox=(Math.random()*2-1)*sh,oy=(Math.random()*2-1)*sh;
+    wobbleEls.forEach(el=>{if(el)el.style.translate=sh>.05?`${ox.toFixed(1)}px ${oy.toFixed(1)}px`:''});
+    const st=step();
+    /* front: rings and pop-ups */
+    fc.setTransform(1,0,0,1,0,0);fc.clearRect(0,0,front.width,front.height);fc.setTransform(dpr,0,0,dpr,ox,oy);
+    rings.forEach(r=>{const k=r.age/r.life,e=1-Math.pow(1-k,3);fc.globalAlpha=1-k;fc.strokeStyle=pal(st+r.ci);fc.lineWidth=r.w*(1-k*.7);
+      fc.beginPath();fc.arc(r.x,r.y,r.r0+(r.r1-r.r0)*e,0,7);fc.stroke()});fc.globalAlpha=1;
+    pops.forEach(p=>drawSticker(fc,p.j,p.text,p.size,p.layers));
+    /* back: the cube's colour shadow */
+    bc.setTransform(1,0,0,1,0,0);bc.clearRect(0,0,back.width,back.height);
+    const ca=Math.max(Math.min(1,cube.motion*1.6),cubeHi);
+    if(ca>.02){const r=stage.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,R=3*S*Math.sqrt(2/3)*1.02;bc.setTransform(dpr,0,0,dpr,ox,oy);
+      for(let L=1;L>=0;L--){const t=cube.shXf(L,C.offset*S/80),a=ca*(L?.55:.9);bc.globalAlpha=a;bc.fillStyle=pal(st+L*2+5);
+        bc.save();bc.translate(cx+t.x,cy+t.y);bc.rotate(t.r*.25);bc.scale(t.s,t.s);hexPath(bc,0,0,R);bc.fill();bc.restore()}
+      bc.globalAlpha=1}
+    /* DOM text: transform + trailing text-shadow */
+    texts.forEach((t,el)=>{
+      if(!el.isConnected){texts.delete(el);return}
+      const x=t.j.xf(),a=Math.max(Math.min(1,t.j.motion*1.4),t.j.highlight);
+      el.style.transform=`translate(${x.x.toFixed(2)}px,${x.y.toFixed(2)}px) rotate(${x.r.toFixed(3)}rad) scale(${x.s.toFixed(3)})`;
+      if(a>.02){const s=t.j.shXf(0,t.off),dx=(s.x-x.x).toFixed(1),dy=(s.y-x.y).toFixed(1);
+        el.style.textShadow=`${dx}px ${dy}px 0 ${rgba(st+5+t.ci,a)}`;
+        if(t.box) el.style.boxShadow=`${dx}px ${dy}px 0 ${rgba(st+5+t.ci,a)}`}
+      else{el.style.textShadow='';if(t.box)el.style.boxShadow=''}
+      if(t.j.settled&&!t.j.highlight){el.style.transform='';texts.delete(el)}
+    });
+    /* scored word: every letter cycles the palette in step */
+    const pw=$('preview');if(pw.classList.contains('ok')) pw.querySelectorAll('.l').forEach((l,i)=>{l.style.color=pal(st+i+2);l.style.webkitTextStrokeColor=pal(st+i)});
+    const busyNow=pops.length||rings.length||trauma>0||texts.size||ca>.02||!cube.settled||dragging||pw.classList.contains('ok');
+    if(busyNow){requestAnimationFrame(loop);dirty=true}
+    else{running=false;if(dirty){fc.setTransform(1,0,0,1,0,0);fc.clearRect(0,0,front.width,front.height);bc.setTransform(1,0,0,1,0,0);bc.clearRect(0,0,back.width,back.height);dirty=false}}
+  }
+  return {
+    pal,
+    /* a sticker word or number that springs in, holds, and scales out */
+    pop(text,x,y,o={}){if(off()) return;
+      const j=new J(x,y+10,{from:0,sk:o.k??380,ci:o.ci??Math.floor(Math.random()*8)});j.moveTo(x,y-(o.rise??14));j.pop();if(o.kick)j.punch(o.kick);if(o.shove)j.shove(o.shove);
+      pops.push({j,text,size:o.size??40,age:0,life:o.life??1,layers:o.layers??1});kick()},
+    /* a big moment across the middle of the cube */
+    banner(text,o={}){if(off()) return;const r=stage.getBoundingClientRect(),w=Math.min(innerWidth*.92,r.width*1.2);
+      let size=o.size??64;fc.font=C.font.replace('SIZE',size);const m=fc.measureText(text).width*1.25;if(m>w)size=Math.floor(size*w/m);
+      /* "top": the gap between the word readout and the cube's top corner, so it never covers letters */
+      let y=r.top+r.height*(o.at??.42);
+      if(o.top){const pb=$('preview').getBoundingClientRect().bottom,ct=r.top+r.height/2-3*S*Math.sqrt(2/3);y=Math.max(pb+size*.55,(pb+ct)/2);if(y+size*.5>ct)size=Math.max(30,Math.floor((ct-pb)*.8))}
+      this.pop(text,r.left+r.width/2,y,{size,layers:3,kick:9,life:o.life??1.3,shove:300});this.shake(o.shake??.45)},
+    ring(x,y,o={}){if(off()) return;rings.push({x,y,r0:S*(o.r0??.28),r1:S*(o.r1??.62),w:o.w??Math.max(3,S*.07),age:0,life:o.life??.32,ci:o.ci??0});kick()},
+    shake(a=.3){if(off()) return;trauma=Math.min(1,trauma+a);kick()},
+    /* make a DOM text element jump; f scales the hit */
+    hit(el,f=1,o={}){if(off()||!el) return;const t=textJ(el);if(o.box)t.box=true;if(o.off)t.off=o.off;
+      t.j.p.y.v-=150*f;t.j.p.x.v+=(Math.random()*2-1)*70*f;t.j.punch(7*f).shove(160*f);if(f>=1)t.j.r.x=(Math.random()<.5?-1:1)*.12*Math.min(2,f);kick()},
+    /* keep the colour shadow on (a valid word while tracing) */
+    glow(el,on){if(off()||!el) return;const t=textJ(el);t.j.highlight=on?1:0;kick()},
+    /* the cube's colour shadow: dragged along while a turn is live, flung when it commits */
+    cubeDrag(dx,dy,hi){if(off()) return;dragging=hi>0;cube.moveTo(dx,dy);cubeHi=Math.min(.85,hi);kick()},
+    cubeRelease(){dragging=false;cubeHi=0;cube.moveTo(0,0);kick()},
+    cubeTurn(ux,uy){if(off()) return;dragging=false;cubeHi=0;cube.moveTo(0,0);
+      const a=ux==null?Math.random()*6.283:Math.atan2(uy,ux);cube.p.x.v+=Math.cos(a)*-520;cube.p.y.v+=Math.sin(a)*-520;cube.shove(420,a).punch(1.2);
+      trauma=Math.min(1,trauma+.12);kick()},
+    cfg:C
+  };
+})();
+
 /* ---------- sound ----------
    Everything is synthesised with Web Audio (no files). Words climb a pentatonic scale while the player
    keeps chaining them, so any run of words sounds musical. Off with the Sound toggle in Settings. */
@@ -995,6 +1134,8 @@ const SFX=(()=>{
       if(faces>1) tone(hz(1047,chain),.28,{type:'sine',vol:.05,at:n*.058});
     },
     bad(){tone(150,.16,{type:'sawtooth',vol:.05,slide:.7})},
+    turn(){tone(160,.16,{type:'triangle',vol:.06,slide:2.2});tone(90,.1,{type:'sine',vol:.08,slide:.6})},
+    valid(){tone(hz(784,4),.08,{type:'sine',vol:.05})},
     /* swap: one note rises while the other falls, as the letters cross */
     swap(){tone(392,.5,{type:'triangle',vol:.07,at:.1,slide:2});tone(784,.5,{type:'triangle',vol:.07,at:.1,slide:.5});tone(1568,.12,{type:'sine',vol:.03,at:.4})},
     land(){tone(523.25,.1,{type:'triangle',vol:.11});tone(783.99,.18,{type:'triangle',vol:.1,at:.06})},
@@ -1185,14 +1326,15 @@ function spawnCoins(points,amount,max){
       const x=u*u*sx+2*u*e*bx+e*e*tx, y=u*u*sy+2*u*e*by+e*e*ty, sc=k<.15?k/.15:1-.4*e;
       el.style.transform=`translate(${x}px,${y}px) scale(${sc}) rotate(${k*360}deg)`;
       if(k<1){requestAnimationFrame(step);return}
-      el.remove();shown+=share;drawCoins();juice(tile);SFX.coin();
+      el.remove();shown+=share;drawCoins();juice(tile);SFX.coin();JX.hit($('coins'),.55);
       if(Math.random()<.3){const q=tile.getBoundingClientRect();sparkle(q.left+10+Math.random()*(q.width-20),q.top+5+Math.random()*(q.height-10),9+Math.random()*8)}
       if(--inFlight===0){setCoins(G.coins)}
     })(performance.now());
   }
-  const f=document.createElement('div');f.className='float';f.textContent='+'+amount;
   const c=points.reduce((a,p)=>[a[0]+p[0]/points.length,a[1]+p[1]/points.length],[0,0]);
-  f.style.left=c[0]+'px';f.style.top=c[1]+'px';fx.appendChild(f);setTimeout(()=>f.remove(),950);
+  /* the amount as a sticker that springs up out of the letters; bigger amounts, bigger sticker */
+  const big=amount>=60,size=Math.round(30+Math.min(40,10*Math.log2(1+amount/6)));
+  JX.pop('+'+amount,c[0],c[1]-S*.2,{size,layers:big?3:1,kick:big?9:4,life:big?1.25:.95,rise:22});if(big)JX.shake(.3);
 }
 const centerOf=el=>{const r=el.getBoundingClientRect();return [r.left+r.width/2,r.top+r.height/2]};
 
@@ -1293,6 +1435,8 @@ function preview(word,cls,extra){
   [...word].forEach((ch,i)=>{const l=document.createElement('span');l.className='l'+(grow&&i===word.length-1?' new':'');l.style.setProperty('--i',i);l.textContent=ch;w.appendChild(l)});
   p.appendChild(w);
   if(extra){const e=document.createElement('span');e.className='tag';e.textContent=extra;p.appendChild(e)}
+  if(cls==='ok'){JX.hit(w,1.6);JX.glow(w,true)}
+  else if(!cls&&grow) JX.hit(w,.45);
   if(cls) prevT=setTimeout(()=>{p.className='preview';p.innerHTML='';lastPrev=''},1500);
 }
 
@@ -1349,9 +1493,11 @@ function animate(sel,k,s,dur,after,fromDeg){
   const A='XYZ'[k], els=cubies(sel);
   if(!fromDeg){rotEls(els,A,0,0);void cubeEl.offsetWidth;}
   const ms=Math.max(90,Math.round(dur*(1-Math.abs(fromDeg||0)/90)));
-  rotEls(els,A,90*s,ms);orientFor(quarter(k,s),ms);
+  const td=turnDir||(()=>{const a=Math.random()*6.283;return [Math.cos(a),Math.sin(a)]})();turnDir=null;
+  rotEls(els,A,90*s,ms);orientFor(quarter(k,s),ms);JX.cubeTurn(td[0],td[1]);SFX.turn();
   setTimeout(()=>{moveStickers(sel,k,s);G.stickers.forEach(st=>delete st.spin);cubeEl.classList.remove('moving');render();busy=false;after&&after()},ms+30);
 }
+let turnDir=null;
 function turnCube(k,s,fromDeg){
   if((busy&&!fromDeg)||G.done) return;
   if(T&&(!T.step.turn||T.step.turn==='free')){tutNo();return}
@@ -1456,7 +1602,7 @@ function submit(){
   const used=path.slice();path=[];
   if(word.length<cfg.minLen){paintSel();preview('');if(word.length>1)preview(word,'bad',`words need ${cfg.minLen}+ letters`);return}
   if(T&&T.step.target&&word!==T.step.target){paintSel();preview(word,'bad',`try ${T.step.target.toUpperCase()}`);tutNo();return}
-  if(!DICT.has(word)){paintSel();preview(word,'bad','not in the word list');SFX.bad();return}
+  if(!DICT.has(word)){paintSel();preview(word,'bad','not in the word list');SFX.bad();JX.shake(.12);return}
   if(G.found.some(f=>f.w===word)){paintSel();preview(word,'bad','already made');SFX.bad();return}
   accept(word,used);
 }
@@ -1530,6 +1676,9 @@ function accept(word,used){
   if(nNew) driftBurst(10);else if(word.length>=7) driftBurst(6);
   SFX.word(word.length,nf);HAP.word(word.length);glowDrift(word.length);if(nNew) setTimeout(()=>{SFX.face();HAP.face()},reduce?0:260);
   ripple(word.length);
+  JX.shake(Math.min(.32,.06+(word.length-3)*.06));
+  {const hype=nNew?'FACE CLEAR!':word.length>=9?'LEGENDARY!':word.length>=8?'INCREDIBLE!':word.length>=7?'SUPERB!':word.length>=6?'GREAT!':'';
+   if(hype)setTimeout(()=>JX.banner(hype,{top:true,size:nNew||word.length>=8?62:52,shake:nNew?.4:.25,life:1}),reduce?0:120)}
   if(!reduce){stage.style.setProperty('--k',Math.min(4,word.length-2));stage.classList.remove('thump');void stage.offsetWidth;stage.classList.add('thump');setTimeout(()=>stage.classList.remove('thump'),340)}
   if(run) runJuice(ev,pts,broke); else spawnCoins(pts,c+fb);
   busy=true;
@@ -1696,7 +1845,7 @@ function runProgress(){
   if(empty){bonus=round5(Math.max(25,R.target*.15));G.coins+=bonus;R.earned+=bonus}
   if(R.earned>=R.target){roundClear();return}
   if(R.left<=0){runOver();return}
-  if(empty){runCube();render(true);introSpin();preview('cube\u00a0cleared','ok','+'+bonus);SFX.face();HAP.face();driftBurst(10)}
+  if(empty){runCube();render(true);introSpin();preview('cube\u00a0cleared','ok','+'+bonus);JX.banner('CUBE CLEAR!',{size:62});SFX.face();HAP.face();driftBurst(10)}
   status();save();
 }
 /* a fresh cube for the same run: the stamps, coins, tray and round carry over */
@@ -1719,12 +1868,12 @@ function roundClear(){
   R.stamps.forEach(s=>{if(s.id==='piggy')s.v++;if(s.id==='vet')s.v=Math.round((s.v+.25)*100)/100});
   R.phase='pick';R.offer=rollOffer(R.stamps);R.rr=0;
   setBest(R.round);save();hud();
-  SFX.win();HAP.win();driftBurst(10);juice($('goalPill'));
+  SFX.win();HAP.win();driftBurst(10);juice($('goalPill'));JX.banner('ROUND CLEAR!',{size:66,shake:.55,life:1.4})
   setTimeout(()=>{if(G.run===R&&R.phase==='pick'&&playing)showPick()},reduce?0:900);
 }
 function runOver(){
   const R=G.run;G.done=true;G.failed=true;R.phase='over';path=[];paintSel();clearUndo();clearNotice();save();hud();
-  setTimeout(()=>{if(G.run===R&&playing)showOver()},reduce?0:700);
+  JX.shake(.35);setTimeout(()=>{if(G.run===R&&playing)showOver()},reduce?0:700);
 }
 function nextRound(){
   const R=G.run;
@@ -1813,7 +1962,7 @@ function flyChip(from,to,text,dur,done){
 }
 function runJuice(ev,pts,broke){
   const tagEl=()=>$('preview').querySelector('.tag');
-  const setTag=(v,big)=>{const t=tagEl();if(!t) return;t.textContent='+'+v;t.classList.remove('punch');void t.offsetWidth;t.classList.add('punch');t.classList.toggle('big',!!big)};
+  const setTag=(v,big)=>{const t=tagEl();if(!t) return;t.textContent='+'+v;t.classList.toggle('big',!!big);JX.hit(t,big?2.2:1.1,{box:true,off:5})};
   const R=G.run,huge=ev.total>=Math.max(40,R.target*.25);
   const breakFx=()=>broke.forEach(i=>{const b=$('rack').children[i];if(!b) return;const [x,y]=centerOf(b);for(let k=0;k<6;k++)sparkle(x+(Math.random()-.5)*40,y+(Math.random()-.5)*46,10+Math.random()*10);SFX.bad();toast('Glass broke.')});
   if(reduce||!ev.hits.length){setTag(ev.total);spawnCoins(pts,ev.total,huge?30:18);breakFx();return}
@@ -1826,6 +1975,7 @@ function runJuice(ev,pts,broke){
     const now=Math.round((ev.base+add)*mult);
     if(el){el.classList.remove('hit','in');void el.offsetWidth;el.classList.add('hit');setTimeout(()=>el.classList.remove('hit'),440)}
     SFX.hit(k);
+    if(el){const [x,y]=centerOf(el);JX.pop(h.t,x,y-30,{size:30+Math.min(14,k*3),life:.6,kick:5})}JX.shake(.05+k*.03);
     flyChip(el,tagEl(),h.t,step*.7,()=>{setTag(now);const t=tagEl();if(t){const [x,y]=centerOf(t);sparkle(x+(Math.random()-.5)*50,y+(Math.random()-.5)*20,10+k*2)}});
   },200+k*step));
   setTimeout(()=>{
@@ -1834,6 +1984,7 @@ function runJuice(ev,pts,broke){
     const t=tagEl(),src=t?pts.concat([centerOf(t)]):pts;
     spawnCoins(src,ev.total,huge?34:24);
     SFX.total(Math.min(n,5));
+    JX.shake(huge?.5:.2);if(huge)JX.banner(ev.total>=R.target?'JACKPOT!':'HUGE!',{top:true,size:66,life:1.2});
     if(ev.mult>=3||huge){driftBurst(huge?12:7);stage.style.setProperty('--k',huge?5:3);stage.classList.remove('thump');void stage.offsetWidth;stage.classList.add('thump');setTimeout(()=>stage.classList.remove('thump'),340)}
     if(huge&&t){const [x,y]=centerOf(t);for(let k=0;k<6;k++)setTimeout(()=>sparkle(x+(Math.random()-.5)*150,y+(Math.random()-.5)*50,12+Math.random()*12),k*60)}
     breakFx();drawRack();
@@ -1983,7 +2134,7 @@ function complete(cleared){
   G.coins+=bonus;
   runSheetOff();$('sheetTitle').textContent=`Level ${G.level} cleared`;
   document.querySelector('#sheet .card').classList.remove('fail');$('failMsg').hidden=true;$('nextBtn').textContent='Next level';
-  showPerf(G.earned+(G.faceBonus||0)+bonus-G.spent,clean);SFX.win();HAP.win();
+  showPerf(G.earned+(G.faceBonus||0)+bonus-G.spent,clean);SFX.win();HAP.win();JX.banner(clean?'FLAWLESS!':'LEVEL CLEAR!',{at:.12,size:62,shake:.5,life:1.4});
   const F=G.found,hl=highlights();
   const nfc=G.facesPaid||0;
   const rows=[[`${F.length} words`,`+${G.earned}`,'pos'],...(G.faceBonus?[[`${nfc} face${nfc===1?'':'s'} cleared`,`+${G.faceBonus}`,'pos']]:[]),...hl,['Level bonus',`+${cfg.levelBonus}`,'pos'],['Clear bonus',`+${cfg.clearBonus}`,'pos'],
@@ -2035,6 +2186,19 @@ function traceTarget(cx,cy){
   return best;
 }
 
+/* ---------- trace juice: each letter rings and pops; a real word lights its colour shadow ---------- */
+let wasValid=false;
+function traceJuice(st){
+  if(reduce) return;const el=elById[st.id];if(!el) return;const [x,y]=centerOf(el),n=path.length;
+  JX.ring(x,y,{ci:n,r1:.5+Math.min(.4,n*.04)});
+  const t=el.querySelector('.tile');if(t&&t.animate)t.animate([{scale:'1'},{scale:'1.22'},{scale:'1'}],{duration:240,easing:'cubic-bezier(.2,1.8,.4,1)'});
+}
+function traceValid(w){
+  const ok=w.length>=cfg.minLen&&DICT.has(w)&&!G.found.some(f=>f.w===w)&&!(T&&T.step.target&&w!==T.step.target);
+  const we=$('preview').querySelector('.word');JX.glow(we,ok);
+  if(ok&&!wasValid){SFX.valid();JX.hit(we,.9)}
+  wasValid=ok;
+}
 /* ---------- input ---------- */
 function stickerAt(x,y){const el=document.elementFromPoint(x,y);const t=el&&el.closest&&el.closest('.sticker');return t&&stage.contains(t)?t:null}
 const byId=id=>G.stickers[id];
@@ -2048,7 +2212,7 @@ function stageDown(e){
   /* tutorial: only the move the step asks for */
   if(T&&(kind==='turn'?!T.step.turn:!T.step.target)){tutNo();e.preventDefault();return}
   gesture={x:e.clientX,y:e.clientY,st,fired:false,kind};
-  if(gesture.kind==='trace'){path=[st];paintSel();preview(st.ch)}
+  if(gesture.kind==='trace'){path=[st];paintSel();preview(st.ch);traceJuice(st);wasValid=false}
   else armHold(gesture);
   e.preventDefault();
 }
@@ -2068,9 +2232,9 @@ stage.addEventListener('pointermove',e=>{
     const st=traceTarget(e.clientX,e.clientY), last=path[path.length-1];
     if(!st||st===last||!st.ch) return;
     if(path.length>1&&st===path[path.length-2]) path.pop();
-    else if(!path.includes(st)&&adj(st,last)){path.push(st);SFX.tick(path.length)}
+    else if(!path.includes(st)&&adj(st,last)){path.push(st);SFX.tick(path.length);traceJuice(st)}
     else return;
-    {const w=path.map(s=>s.ch).join('');paintSel();preview(w,'',liveTag(w))}
+    {const w=path.map(s=>s.ch).join('');paintSel();preview(w,'',liveTag(w));traceValid(w)}
     return;
   }
   liveMove(gesture,e.clientX,e.clientY,stage.clientWidth*.4);
@@ -2166,14 +2330,16 @@ function classicMove(g,cx,cy,span){
     g.live={k,s,ux:dx/l,uy:dy/l,deg:0,half:false,els:cubies(()=>true)};busy=true;path=[];paintSel();cubeEl.classList.add('moving');
   }
   const L=g.live,prog=(dx*L.ux+dy*L.uy)/span;
-  if(prog>=1){moveStickers(()=>true,L.k,L.s);G.stickers.forEach(st=>delete st.spin);cubeEl.classList.remove('moving');render();busy=false;g.live=null;g.x=cx;g.y=cy;tutEvent('turn');return}
+  JX.cubeDrag(L.ux*Math.max(0,prog)*S*.32,L.uy*Math.max(0,prog)*S*.32,Math.max(0,prog)*1.3);
+  if(prog>=1){JX.cubeTurn(L.ux,L.uy);SFX.turn();moveStickers(()=>true,L.k,L.s);G.stickers.forEach(st=>delete st.spin);cubeEl.classList.remove('moving');render();busy=false;g.live=null;g.x=cx;g.y=cy;tutEvent('turn');return}
   L.deg=Math.max(-.1,prog)*90*L.s;
   rotEls(L.els,'XYZ'[L.k],L.deg,0);
   const half=Math.abs(L.deg)>=45;if(half!==L.half){L.half=half;orientFor(half?quarter(L.k,L.s):ORIENTS[0],200)}
 }
 function classicEnd(g){
   const L=g.live;if(!L) return;g.live=null;
-  if(Math.abs(L.deg)>=24){turnCube(L.k,L.s,L.deg);return}
+  if(Math.abs(L.deg)>=24){turnDir=[L.ux,L.uy];turnCube(L.k,L.s,L.deg);return}
+  JX.cubeRelease();
   orientFor(ORIENTS[0],160);
   rotEls(L.els,'XYZ'[L.k],0,160);
   setTimeout(()=>{cubeEl.classList.remove('moving');render();busy=false},190);
@@ -2190,10 +2356,12 @@ function freeMove(g,cx,cy,span){
   const Q=M3.axis([-dy/l,dx/l,0],l/span*Math.PI/2);
   L.R=M3.mul(M3.mul(M3.mul(VIEW_T,Q),VIEW_M),L.R);
   g.x=cx;g.y=cy;L.ex=cx;L.ey=cy;setSpin(L.R);
+  {const ddx=cx-L.sx,ddy=cy-L.sy,dl=Math.hypot(ddx,ddy)||1,m=Math.min(1,dl/span);JX.cubeDrag(ddx/dl*m*S*.3,ddy/dl*m*S*.3,m*1.2)}
   const P=nearest(L.R);if(P!==L.P){L.P=P;orientFor(P,220)}
 }
 function freeEnd(g){
   const L=g.live;if(!L) return;g.live=null;
+  const ddx=L.ex-L.sx,ddy=L.ey-L.sy,dl=Math.hypot(ddx,ddy);JX.cubeTurn(ddx||null,ddy||null);SFX.turn();
   const P=nearest(L.R);
   orientFor(P,240);
   /* ease from the release to P, about the single axis that joins them */
@@ -2600,7 +2768,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261113-064028';
+const BUILD='20261125-233018';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
