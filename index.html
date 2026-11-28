@@ -614,6 +614,17 @@ html.era .tool .cost{color:#0A0A0A}
 html.era .tl{background:#FFFFFF;color:#0A0A0A;border:2.5px solid #000;border-radius:8px;box-shadow:3px 3px 0 #000;font-family:var(--fe);font-weight:400}
 html.era .tray-t .tl.picked{box-shadow:3px 3px 0 #000,0 0 0 3px var(--era-sel)}
 html.era .pad{background:var(--era-dk2);border:2.5px solid #000;border-radius:10px;box-sizing:border-box}
+/* the free letters get the room: slimmer tools and pad, tighter gaps, and tiles that keep their
+   proportions (never squeezed into tall pills) with a gentler fan so the letters stay upright */
+html.era .dock{gap:6px;padding:8px 10px 12px}
+html.era .tool{width:46px;height:50px}
+html.era .tool svg{width:20px;height:20px}
+html.era .tool .cost{font-size:9.5px;letter-spacing:-.01em}
+html.era .pad{width:46px;height:46px}
+html.era .tray-t{gap:4px;padding:4px 0}
+html.era .tray-t .tl{flex:0 1 34px;min-width:0;width:auto;height:auto;aspect-ratio:5/6;font-size:clamp(17px,5.4vw,22px);border-width:2px;box-shadow:2px 2px 0 #000;rotate:calc(var(--o,0) * 2deg)}
+html.era .tray-t .tl:not(.deal):not(.swapin){animation-name:handEra}
+@keyframes handEra{0%,100%{translate:0 0;rotate:calc(var(--o,0) * 2deg - .5deg)}50%{translate:0 -2px;rotate:calc(var(--o,0) * 2deg + .5deg)}}
 
 /* menus and cards */
 html.era .card{background:#FFFFFF;color:#0A0A0A;border:3px solid #0A0A0A;border-radius:16px;box-shadow:8px 8px 0 #0A0A0A}
@@ -2951,7 +2962,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261128-174947';
+const BUILD='20261128-175341';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
