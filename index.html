@@ -621,6 +621,12 @@ html.era .card .ttl{background:var(--st-r);border-bottom:3px solid #0A0A0A}
 html.era .card h2{font-family:var(--fe);font-weight:400;color:#0A0A0A}
 html.era .stats dt{color:#555}
 html.era .pick-l{color:#0A0A0A}
+html.era .perf .score{font-family:var(--fe);font-weight:400;color:#0A0A0A}
+html.era .perf .score-l{color:#444}
+html.era .perf .tier{background:var(--era-sel);color:#0A0A0A!important;border:2.5px solid #0A0A0A;border-radius:0;box-shadow:3px 3px 0 #0A0A0A}
+html.era .perf text{font-family:var(--fu)}
+html.era .stats .pos{color:#0A0A0A;background:var(--era-sel);box-shadow:inset 0 0 0 2px #0A0A0A;padding:1px 5px}
+html.era .stats .neg{color:#C41E0A}
 html.era .pick-d,html.era .failmsg,html.era .cap,html.era .tip{color:#0A0A0A}
 html.era .pick .o{background:#FFFFFF;color:#0A0A0A;border:2.5px solid #0A0A0A;border-radius:10px;box-shadow:3px 3px 0 #0A0A0A}
 html.era .pick .o small{color:#444}
@@ -2275,16 +2281,19 @@ function showPerf(score,clean){
   const mxp=sx(score);
   /* where the curve sits above the marker */
   const fi=Math.max(0,Math.min(n-1,(mxp-X0)/(X1-X0)*n-.5)),i0=Math.floor(fi),i1=Math.min(n-1,i0+1),my=ys(sm[i0]+(sm[i1]-sm[i0])*(fi-i0));
-  let ticks='';for(let v=BENCH_LO;v<=BENCH_LO+n*BENCH_BIN;v+=100){const x=sx(v);ticks+=`<line x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${Y0}" y2="${Y0+4}" stroke="#555"/><text x="${x.toFixed(1)}" y="${Y0+16}" font-size="10" fill="#8C8C8C" text-anchor="middle">${v}</text>`}
+  /* colours: drawn for the dark card, or in ink on the white era card */
+  const ink=ERAS?{tick:'#0A0A0A',lab:'#333',axis:'#0A0A0A',rest:'#0A0A0A',restA:.1,you:getComputedStyle(document.documentElement).getPropertyValue('--era-sel').trim()||'#FFD60A',youA:.85,curve:'#0A0A0A',cw:3,mark:'#0A0A0A',pill:'#0A0A0A',pillT:'#FFFFFF'}
+    :{tick:'#555',lab:'#8C8C8C',axis:'#444',rest:'#C9D3DC',restA:.14,you:'#FFD60A',youA:.42,curve:'#F2F2F2',cw:2.2,mark:'#FFD60A',pill:'#FFD60A',pillT:'#0A0A0A'};
+  let ticks='';for(let v=BENCH_LO;v<=BENCH_LO+n*BENCH_BIN;v+=100){const x=sx(v);ticks+=`<line x1="${x.toFixed(1)}" x2="${x.toFixed(1)}" y1="${Y0}" y2="${Y0+4}" stroke="${ink.tick}" stroke-width="1.5"/><text x="${x.toFixed(1)}" y="${Y0+16}" font-size="10" fill="${ink.lab}" text-anchor="middle">${v}</text>`}
   const lab=Math.max(18,Math.min(W-18,mxp));
   $('perfSvg').innerHTML=`<defs><clipPath id="pcL"><rect x="0" y="0" width="${mxp.toFixed(1)}" height="${Y0}"/></clipPath><clipPath id="pcR"><rect x="${mxp.toFixed(1)}" y="0" width="${W}" height="${Y0}"/></clipPath></defs>
-    <path class="fillR" d="${area}" fill="#C9D3DC" fill-opacity=".14" clip-path="url(#pcR)"/>
-    <path class="fillL" d="${area}" fill="#FFD60A" fill-opacity=".42" clip-path="url(#pcL)"/>
-    <path class="curve" pathLength="1" d="${line}" fill="none" stroke="#F2F2F2" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
-    <line x1="${X0}" x2="${X1}" y1="${Y0}" y2="${Y0}" stroke="#444"/>${ticks}
-    <g class="mark"><line x1="${mxp.toFixed(1)}" x2="${mxp.toFixed(1)}" y1="${(Y1-4).toFixed(1)}" y2="${Y0}" stroke="#FFD60A" stroke-width="2.4"/>
-      <circle cx="${mxp.toFixed(1)}" cy="${my.toFixed(1)}" r="5" fill="#FFD60A" stroke="#0A0A0A" stroke-width="2"/>
-      <rect x="${(lab-17).toFixed(1)}" y="0" width="34" height="16" rx="8" fill="#FFD60A"/><text x="${lab.toFixed(1)}" y="11.5" font-size="10" fill="#0A0A0A" text-anchor="middle" letter-spacing=".06em">YOU</text></g>`;
+    <path class="fillR" d="${area}" fill="${ink.rest}" fill-opacity="${ink.restA}" clip-path="url(#pcR)"/>
+    <path class="fillL" d="${area}" fill="${ink.you}" fill-opacity="${ink.youA}" clip-path="url(#pcL)"/>
+    <path class="curve" pathLength="1" d="${line}" fill="none" stroke="${ink.curve}" stroke-width="${ink.cw}" stroke-linejoin="round" stroke-linecap="round"/>
+    <line x1="${X0}" x2="${X1}" y1="${Y0}" y2="${Y0}" stroke="${ink.axis}" stroke-width="${ERAS?2:1}"/>${ticks}
+    <g class="mark"><line x1="${mxp.toFixed(1)}" x2="${mxp.toFixed(1)}" y1="${(Y1-4).toFixed(1)}" y2="${Y0}" stroke="${ink.mark}" stroke-width="2.4"/>
+      <circle cx="${mxp.toFixed(1)}" cy="${my.toFixed(1)}" r="5" fill="${ink.you}" stroke="#0A0A0A" stroke-width="2"/>
+      <rect x="${(lab-17).toFixed(1)}" y="0" width="34" height="16" rx="${ERAS?0:8}" fill="${ink.pill}"/><text x="${lab.toFixed(1)}" y="11.5" font-size="10" fill="${ink.pillT}" text-anchor="middle" letter-spacing=".06em">YOU</text></g>`;
   /* the number counts up */
   const el=$('perfScore');
   if(reduce||document.documentElement.classList.contains('calm')){el.textContent=score;return}
@@ -2942,7 +2951,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261128-174246';
+const BUILD='20261128-174947';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
