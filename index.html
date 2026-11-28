@@ -1635,7 +1635,7 @@ function undo(){
   const rec=G.undo&&G.undo[G.undo.length-1];if(!rec) return;
   const cost=cfg.undoCost||0;
   if(cost&&G.coins<cost){toast(`Undo costs ${cost} coins.`);return}
-  G.undo.pop();path=[];picked=null;clearDrop();
+  G.undo.pop();path=[];picked=null;clearDrop();streak=0;
   if(cost){G.coins-=cost;G.spent+=cost}
   if(rec.t==='w'){
     rec.cells.forEach(([id,ch,tp],i)=>{const s=G.stickers[id];s.ch=ch;s.born=i;if(tp)s.tp=true;else delete s.tp});
@@ -1655,6 +1655,7 @@ function accept(word,used){
   const nf=facesIn(used);
   /* in a run the stamps decide what the word pays; undo puts the whole run back as it was */
   const run=isRun()&&G.run.phase==='play',ev=run?runEval(word,used):null;let broke=[];
+  const before=run?{top:G.run.top,earned:G.run.earned,total:G.run.total||0}:null;
   if(run){G.undo[G.undo.length-1].run=JSON.stringify(G.run);broke=runCommit(word,ev)}
   const c=run?ev.total:word.length*cfg.coinsPerLetter+(word.length>=6?cfg.longBonus:0)+(nf-1)*cfg.crossBonus;
   /* a face that this word empties for the first time pays a bonus */
@@ -1678,7 +1679,11 @@ function accept(word,used){
   ripple(word.length);
   JX.shake(Math.min(.32,.06+(word.length-3)*.06));
   {const hype=nNew?'FACE CLEAR!':word.length>=9?'LEGENDARY!':word.length>=8?'INCREDIBLE!':word.length>=7?'SUPERB!':word.length>=6?'GREAT!':'';
-   if(hype)setTimeout(()=>JX.banner(hype,{top:true,size:nNew||word.length>=8?62:52,shake:nNew?.4:.25,life:1}),reduce?0:120)}
+   if(hype)setTimeout(()=>JX.banner(hype,{top:true,size:nNew||word.length>=8?62:52,shake:nNew?.4:.25,life:1}),reduce?0:120);
+   const cl=callout(word,used,nf,run,before);
+   if(cl){const cx=pts.reduce((a,q)=>a+q[0],0)/pts.length,cy=pts.reduce((a,q)=>a+q[1],0)/pts.length;
+     const sz=Math.min(cl.big?38:32,innerWidth/(cl.big?10:12)),hw=cl.t.length*sz*.36+12,x=Math.max(hw,Math.min(innerWidth-hw,cx));
+     setTimeout(()=>{JX.pop(cl.t,x,cy+sz*1.4,{size:sz,layers:2,kick:cl.big?8:6,life:.95,rise:26});if(cl.big)JX.shake(.12)},reduce?0:hype?420:160)}}
   if(!reduce){stage.style.setProperty('--k',Math.min(4,word.length-2));stage.classList.remove('thump');void stage.offsetWidth;stage.classList.add('thump');setTimeout(()=>stage.classList.remove('thump'),340)}
   if(run) runJuice(ev,pts,broke); else spawnCoins(pts,c+fb);
   busy=true;
@@ -1689,6 +1694,27 @@ function accept(word,used){
   paintSel();
   setTimeout(()=>{used.forEach(s=>{s.ch=null;delete s.tp});busy=false;render();faceFx.forEach(flashFace);progress();
     const t0=lastInput;setTimeout(()=>{if(lastInput===t0)autoTurn()},reduce?0:420)},reduce?0:Math.max((used.length-1)*step+230,run?juiceDur(ev):0));
+}
+/* ---------- callouts ----------
+   A short sticker word that pops where the word was traced, Odds Engine style, for the moments worth
+   cheering. One per word at most, the rarest moment wins; the length banners (GREAT! and up) stay
+   as they are. Streak counts words of 5+ letters in a row and only calls out at 3, 5 and 8. */
+let streak=0;
+function callout(word,used,nf,run,before){
+  const len=word.length;streak=len>=5?streak+1:0;
+  if(G.mode==='tutorial') return null;
+  if(run&&before){const R=G.run;
+    if(before.earned<R.target&&R.earned>=R.target&&R.left===0) return {t:'CLUTCH!',big:true};
+    if(before.total>=2&&before.top&&R.top&&R.top.w===word&&R.top.c>before.top.c) return {t:'BEST WORD YET!',big:true};
+  }
+  const rare=[...'qzxj'].find(c=>word.includes(c));
+  if(rare) return {t:`NICE ${rare.toUpperCase()}!`};
+  if(streak===8) return {t:'UNSTOPPABLE!',big:true};
+  if(streak===5) return {t:'ON FIRE!',big:true};
+  if(streak===3) return {t:'ON A ROLL!'};
+  if(nf>=3&&len>=5) return {t:'CORNER WRAP!'};
+  if(len===5) return {t:['NICE!','GOOD ONE!','SWEET!'][Math.floor(Math.random()*3)]};
+  return null;
 }
 /* after a word, if the three faces in view have no letters left, turn the cube once toward the side
    that brings the most letters into view. Skipped if the player touches anything in the meantime. */
@@ -1867,13 +1893,17 @@ function roundClear(){
   R.info={earned:R.earned,target:R.target,spare,bonus};
   R.stamps.forEach(s=>{if(s.id==='piggy')s.v++;if(s.id==='vet')s.v=Math.round((s.v+.25)*100)/100});
   R.phase='pick';R.offer=rollOffer(R.stamps);R.rr=0;
+  const newBest=!R.beat&&R.round>getBest()&&getBest()>0;if(newBest)R.beat=true;
   setBest(R.round);save();hud();
-  SFX.win();HAP.win();driftBurst(10);juice($('goalPill'));JX.banner('ROUND CLEAR!',{size:66,shake:.55,life:1.4})
+  SFX.win();HAP.win();driftBurst(10);juice($('goalPill'));JX.banner('ROUND CLEAR!',{size:66,shake:.55,life:1.4});
+  {const t=newBest?'NEW BEST RUN!':spare>=3?`${spare} TO SPARE!`:'';
+   if(t){const r=$('goalPill').getBoundingClientRect();setTimeout(()=>JX.pop(t,r.left+r.width/2,r.bottom+28,{size:Math.min(30,innerWidth/13),layers:2,kick:6,life:1}),reduce?0:520)}}
   setTimeout(()=>{if(G.run===R&&R.phase==='pick'&&playing)showPick()},reduce?0:900);
 }
 function runOver(){
   const R=G.run;G.done=true;G.failed=true;R.phase='over';path=[];paintSel();clearUndo();clearNotice();save();hud();
-  JX.shake(.35);setTimeout(()=>{if(G.run===R&&playing)showOver()},reduce?0:700);
+  JX.shake(.35);if(R.earned>=R.target*.85)JX.banner('SO CLOSE!',{size:58,shake:.2,life:1});
+  setTimeout(()=>{if(G.run===R&&playing)showOver()},reduce?0:700);
 }
 function nextRound(){
   const R=G.run;
@@ -2768,7 +2798,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261125-233018';
+const BUILD='20261128-011227';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
