@@ -16,6 +16,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="manifest" href="manifest.webmanifest">
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@500;700&display=swap');
 @font-face{font-family:'Figtree';src:url('Figtree-Medium.ttf') format('truetype');font-weight:500;font-display:swap}
 @font-face{font-family:'Figtree';src:url('Figtree-SemiBold.ttf') format('truetype');font-weight:600;font-display:swap}
 @font-face{font-family:'Figtree';src:url('Figtree-Bold.ttf') format('truetype');font-weight:700;font-display:swap}
@@ -531,6 +532,98 @@ html.calm .btn.primary::after,html.calm #tContinue::after,html.calm #tNew::after
 .preview .l{-webkit-text-stroke:.2em #0A0A0A;paint-order:stroke fill}
 .preview.ok .l{-webkit-text-stroke-width:.24em}
 .preview .tag{transform-origin:50% 60%}
+
+/* ---------- eras: neo-brutalist look, a new palette and patterned background for every cube ----------
+   html.era is on whenever eras are active; html.era-N picks the palette (cube 1 = era 1, and so on, looping
+   after 6). Each era sets the six sticker colours, the selection/highlight colour (--era-sel), an accent
+   (--era-acc) and the hard-shadow colour (--era-sh). The background pattern lives on .bg[data-era]: a
+   pseudo-element larger than the screen slides exactly one pattern tile and repeats, so the loop is
+   seamless and stays on the GPU. Thick ink outlines and hard un-blurred offset shadows throughout. */
+html.era{--ink:#0A0A0A;--era-sh:#0A0A0A;--era-dk:#151515;--era-dk2:#2A2A2A;--era-lt:#F2F2F2;
+  --fe:'Archivo Black',var(--f);--fu:'Space Grotesk',var(--f)}
+html.era.era-1{--ground:#F3F1EC;--st-w:#FFFFFF;--st-y:#FFD60A;--st-r:#FF4A1C;--st-o:#FF9A1F;--st-b:#2F6BFF;--st-g:#5CB8FF;--era-sel:#FFD60A;--era-acc:#5CB8FF}
+html.era.era-2{--ground:#FFB8D9;--st-w:#FFFFFF;--st-y:#FFE14D;--st-r:#FF7A59;--st-o:#FFA94D;--st-b:#7FB2FF;--st-g:#B79CFF;--era-sel:#C6F432;--era-acc:#FFE14D}
+html.era.era-3{--ground:#A8F0C6;--st-w:#FFFFFF;--st-y:#FFE14D;--st-r:#FF5E3A;--st-o:#FF9EC4;--st-b:#6B4EFF;--st-g:#3EC6FF;--era-sel:#FFE14D;--era-acc:#FF9EC4}
+html.era.era-4{--ground:#D9D9D6;--st-w:#F4F4F2;--st-y:#F7C600;--st-r:#E63B2E;--st-o:#FF8A3D;--st-b:#1F4FD8;--st-g:#7FC8F8;--era-sel:#FFFFFF;--era-acc:#E63B2E}
+html.era.era-5{--ground:#C6F432;--st-w:#FFFFFF;--st-y:#FFD60A;--st-r:#FF6B9A;--st-o:#FF9A1F;--st-b:#151515;--st-g:#8A7CFF;--era-sel:#FFD60A;--era-acc:#FF6B9A}
+html.era.era-6{--ground:#151515;--st-w:#F2F2F2;--st-y:#FFD60A;--st-r:#FF4A1C;--st-o:#FF9A1F;--st-b:#2F6BFF;--st-g:#5CB8FF;--era-sel:#C6F432;--era-acc:#FFD60A;--era-sh:#FFD60A}
+html.era{--st-dark:#0A0A0A;--st-light:#FFFFFF;--plastic:#0A0A0A;color-scheme:light}
+html.era.era-6{color-scheme:dark}
+
+/* background */
+html.era .swirl,html.era .drift{display:none!important}
+html.era .bg{overflow:hidden}
+.bg[data-era]::before{content:'';position:absolute;inset:-120px;animation:eraScroll var(--pd,3s) linear infinite;will-change:transform}
+@keyframes eraScroll{to{transform:translate(var(--pt),var(--pt))}}
+.bg[data-era="1"]{background-color:#F3F1EC}
+.bg[data-era="1"]::before{--pt:26px;--pd:2.6s;background-image:linear-gradient(rgba(10,10,10,.08) 1.5px,transparent 1.5px),linear-gradient(90deg,rgba(10,10,10,.08) 1.5px,transparent 1.5px);background-size:26px 26px}
+.bg[data-era="2"]{background-color:#FFB8D9}
+.bg[data-era="2"]::before{--pt:18px;--pd:2.2s;background-image:radial-gradient(circle,rgba(10,10,10,.22) 2.2px,transparent 2.7px);background-size:18px 18px}
+.bg[data-era="3"]{background-color:#A8F0C6}
+.bg[data-era="3"]::before{--pt:30px;--pd:2.4s;background-image:linear-gradient(45deg,rgba(10,10,10,.09) 25%,transparent 25% 50%,rgba(10,10,10,.09) 50% 75%,transparent 75%);background-size:30px 30px}
+.bg[data-era="4"]{background-color:#D9D9D6}
+.bg[data-era="4"]::before{--pt:28px;--pd:3.2s;background-image:radial-gradient(circle,rgba(10,10,10,.14) 5px,transparent 5.6px),radial-gradient(circle,rgba(10,10,10,.14) 5px,transparent 5.6px);background-size:28px 28px;background-position:0 0,14px 14px}
+.bg[data-era="5"]{background-color:#C6F432}
+.bg[data-era="5"]::before{--pt:24px;--pd:2s;background-image:linear-gradient(135deg,rgba(10,10,10,.1) 25%,transparent 25%),linear-gradient(225deg,rgba(10,10,10,.1) 25%,transparent 25%),linear-gradient(315deg,rgba(10,10,10,.1) 25%,transparent 25%),linear-gradient(45deg,rgba(10,10,10,.1) 25%,transparent 25%);background-size:24px 24px;background-position:-12px 0,-12px 0,0 0,0 0}
+.bg[data-era="6"]{background-color:#151515}
+.bg[data-era="6"]::before{--pt:44px;--pd:4.4s;background-image:conic-gradient(rgba(255,255,255,.06) 25%,transparent 0 50%,rgba(255,255,255,.06) 0 75%,transparent 0);background-size:44px 44px}
+html.calm .bg[data-era]::before{animation:none}
+/* changing era: the old background is laid over the new one and wiped away */
+.bg.bg-old{z-index:-1;animation:eraWipe .7s cubic-bezier(.6,0,.3,1) forwards}
+@keyframes eraWipe{from{clip-path:circle(150% at 50% 45%)}to{clip-path:circle(0% at 50% 45%)}}
+
+/* cube */
+html.era .sticker .tile{font-family:var(--fe);font-weight:400;font-size:calc(var(--s) * .46);border-radius:12%}
+html.era .sticker.empty .tile{background:repeating-linear-gradient(45deg,#2A2A2A 0 7%,#383838 7% 12%);box-shadow:none}
+html.era .sticker.sel .tile{background:var(--era-sel);color:#0A0A0A;box-shadow:inset 0 0 0 calc(var(--s) * .055) #0A0A0A}
+html.era .h-b .tile{color:var(--st-light)}
+
+/* the word being traced: an outlined box in the era's highlight colour, the coin tag in ink */
+html.era .preview .word{font-family:var(--fe);font-weight:400;background:var(--era-sel);border:3px solid #0A0A0A;box-shadow:5px 5px 0 var(--era-sh);padding:6px 12px 3px;gap:1px}
+html.era .preview .word:empty{display:none}
+html.era .preview .l,html.era .preview.ok .l{color:#0A0A0A!important;-webkit-text-stroke:0}
+html.era .preview.bad .word{background:#FF4A1C}
+html.era .preview .tag{background:#0A0A0A;color:var(--era-sel);border-radius:0;border:3px solid #0A0A0A;font-family:var(--fu);rotate:-5deg;box-shadow:none}
+html.era .preview .tag.big{box-shadow:4px 4px 0 var(--era-sel)}
+html.era .preview.bad .tag{background:#0A0A0A;color:var(--fog)}
+
+/* bottom panel: dark, outlined, a hard shadow in the era colour */
+html.era .hub{background:var(--era-dk);border:3px solid #0A0A0A;border-radius:14px;box-shadow:6px 6px 0 var(--era-sel);margin-right:6px;font-family:var(--fu)}
+html.era .hub>.meter{position:relative;left:auto;right:auto;top:auto;margin:10px 12px 2px;height:14px;box-sizing:border-box;border:2.5px solid #000;border-radius:8px;background:var(--era-dk2)}
+html.era .hub>.meter i{background:var(--era-sel);box-shadow:2.5px 0 0 #000}
+html.era .bar{gap:8px;padding:8px 12px 0}
+html.era .pill.stat{background:var(--era-dk2);border:2.5px solid #000;padding:6px 8px 5px;color:var(--era-lt);align-items:baseline}
+html.era .pill.stat .tag{opacity:.75;font-weight:700}
+html.era .pill b{font-family:var(--fe);font-weight:400}
+html.era .pill.coins{background:var(--era-sel);color:#0A0A0A;box-shadow:3px 3px 0 #000}
+html.era .pill.coins .tag{display:none}
+html.era .pill.coins b{color:#0A0A0A}
+html.era .pill.coins .coin{background:#FFFFFF;box-shadow:inset 0 0 0 2.5px #0A0A0A}html.era .pill.coins .coin::after{display:none}
+html.era .pill.menu{width:40px;height:40px;justify-content:center;align-items:center;background:var(--era-dk2);border:2.5px solid #000;border-radius:8px;box-shadow:3px 3px 0 #000;color:var(--era-lt)}
+html.era .pill.menu svg{width:20px;height:20px}
+html.era .tool{border:2.5px solid #000;border-radius:10px;box-shadow:3px 3px 0 #000;color:#0A0A0A}
+html.era .tool.collapse{background:var(--st-o)} html.era .tool.renew{background:var(--st-r)}
+html.era .tool.collapse svg,html.era .tool.renew svg{color:#0A0A0A}
+html.era .tool .cost{color:#0A0A0A}
+html.era .tl{background:#FFFFFF;color:#0A0A0A;border:2.5px solid #000;border-radius:8px;box-shadow:3px 3px 0 #000;font-family:var(--fe);font-weight:400}
+html.era .tray-t .tl.picked{box-shadow:3px 3px 0 #000,0 0 0 3px var(--era-sel)}
+html.era .pad{background:var(--era-dk2);border:2.5px solid #000;border-radius:10px;box-sizing:border-box}
+
+/* menus and cards */
+html.era .card{background:#FFFFFF;color:#0A0A0A;border:3px solid #0A0A0A;border-radius:16px;box-shadow:8px 8px 0 #0A0A0A}
+html.era .card .ttl{background:var(--st-r);border-bottom:3px solid #0A0A0A}
+html.era .card h2{font-family:var(--fe);font-weight:400;color:#0A0A0A}
+html.era .stats dt{color:#555}
+html.era .pick-l{color:#0A0A0A}
+html.era .pick-d,html.era .failmsg,html.era .cap,html.era .tip{color:#0A0A0A}
+html.era .pick .o{background:#FFFFFF;color:#0A0A0A;border:2.5px solid #0A0A0A;border-radius:10px;box-shadow:3px 3px 0 #0A0A0A}
+html.era .pick .o small{color:#444}
+html.era .pick .o.sel{box-shadow:5px 5px 0 #0A0A0A;translate:0 -4px;background:var(--era-sel)}
+html.era .stats .hl,html.era .stats dd{color:#0A0A0A}
+html.era .btn,html.era .mbtn{border:3px solid #0A0A0A;box-shadow:4px 4px 0 #0A0A0A;font-family:var(--fu)}
+html.era .btn.primary{background:#0A0A0A;color:var(--era-sel)}
+html.era .logo span{border:3.5px solid #0A0A0A;box-shadow:5px 5px 0 #0A0A0A;border-radius:10px;font-family:var(--fe);font-weight:400;color:#0A0A0A!important}
+html.era .logo span:nth-child(odd){rotate:-4deg} html.era .logo span:nth-child(even){rotate:3deg;translate:0 -5px}
 </style>
 
 <body>
@@ -902,26 +995,17 @@ function paintSel(){
   const ids=new Set(path.map(s=>s.id));
   for(const id in elById)elById[id].classList.toggle('sel',ids.has(+id));
   const r=stage.getBoundingClientRect();
-  /* the trail takes a colour that reads on each tile it crosses: dark on light stickers,
-     light on cobalt; a thin halo in the opposite tone keeps it legible at seams */
-  const INK='#0A0A0A',PAPER='#F2F2F2',YEL='#FFD60A';
-  const tone=s=>s.hue==='b'?[PAPER,INK]:[INK,PAPER];
-  const pts=path.map(s=>{const b=elById[s.id].getBoundingClientRect();return {x:b.left+b.width/2-r.left,y:b.top+b.height/2-r.top,t:tone(s)}});
-  const w=S*.15,h=w+S*.07;let defs='',halo='',core='',dots='';
-  for(let i=1;i<pts.length;i++){
-    const a=pts[i-1],b=pts[i],g=(id,ca,cb)=>`<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"><stop offset=".4" stop-color="${ca}"/><stop offset=".6" stop-color="${cb}"/></linearGradient>`;
-    defs+=g('tc'+i,a.t[0],b.t[0])+g('th'+i,a.t[1],b.t[1]);
-    const xy=`x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"`;
-    halo+=`<line ${xy} stroke="url(#th${i})" stroke-opacity=".55" stroke-width="${h}"/>`;
-    core+=`<line ${xy} stroke="url(#tc${i})" stroke-opacity=".85" stroke-width="${w}"/>`;
-  }
-  pts.forEach(p=>{dots+=`<circle cx="${p.x}" cy="${p.y}" r="${w*.62}" fill="${p.t[0]}" stroke="${p.t[1]}" stroke-opacity=".55" stroke-width="${S*.035}"/>`});
-  $('trail').innerHTML=pts.length?`<defs>${defs}</defs>${halo}${core}${dots}`:'';
+  /* the trail: a thick ink line with a white core, ending in a ring on the newest letter */
+  const pts=path.map(s=>{const b=elById[s.id].getBoundingClientRect();return [b.left+b.width/2-r.left,b.top+b.height/2-r.top]});
+  const P=pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' '),L=pts[pts.length-1];
+  $('trail').innerHTML=!pts.length?'':(pts.length>1?`<polyline points="${P}" fill="none" stroke="#0A0A0A" stroke-width="${S*.22}" stroke-linecap="round" stroke-linejoin="round"/><polyline points="${P}" fill="none" stroke="#FFFFFF" stroke-width="${S*.085}" stroke-linecap="round" stroke-linejoin="round"/>`:'')
+    +`<circle cx="${L[0]}" cy="${L[1]}" r="${S*.13}" fill="#FFFFFF" stroke="#0A0A0A" stroke-width="${S*.06}"/>`;
 }
 let lastHud={};
 function juice(el){if(!el||reduce)return;el.classList.remove('juice');void el.offsetWidth;el.classList.add('juice');clearTimeout(el._jt);el._jt=setTimeout(()=>el.classList.remove('juice'),520)}
 const coinsTxt=n=>n?`${n} coin${n===1?'':'s'}`:'free';
 function hud(){
+  applyEra();
   const left=G.stickers.filter(s=>s.ch).length, total=G.stickers.length, made=G.found.length;
   if(lastHud.level!==undefined&&lastHud.level!==G.level){juice($('lvlPill'));JX.hit($('lvl'),1.4)}
   document.documentElement.classList.toggle('endless',isEndless());
@@ -1202,6 +1286,21 @@ const HAP=(()=>{
    resolution and is scaled up with hard pixels, so it costs almost nothing. Reduce motion draws one
    still frame. If WebGL is missing, the plain dark ground shows instead. */
 /* the swirl's darkest and lightest colours: neutral greys, or deep to dusty purple in dark mode */
+/* ---------- eras ----------
+   Every cube gets the next era: a palette and an animated pattern background (CSS, html.era-N and
+   .bg[data-era]). Classic: level 1 is era 1, level 2 era 2... Run: counted per cube across the run.
+   Six eras, then they loop. On a change the old background is laid on top and wiped away. */
+const ERAS=true,ERA_N=6;let eraNow=0;
+function eraFor(){if(!G) return 1;const n=isRun()&&G.run?(G.run.cubes||1):G.mode==='tutorial'?1:(G.level||1);return ((n-1)%ERA_N)+1}
+function applyEra(force){
+  if(!ERAS) return;const e=eraFor();if(e===eraNow&&!force) return;
+  const root=document.documentElement,first=!eraNow;
+  for(let i=1;i<=ERA_N;i++) root.classList.toggle('era-'+i,i===e);root.classList.add('era');
+  document.querySelectorAll('.bg:not(.bg-old)').forEach(bg=>{
+    if(!first&&!reduce&&bg.dataset.era){const old=bg.cloneNode(false);old.classList.add('bg-old');bg.after(old);setTimeout(()=>old.remove(),760)}
+    bg.dataset.era=e});
+  eraNow=e;
+}
 const SWIRL_GREY=[[.0306,.03,.0318],[.51,.5,.53]], SWIRL_NIGHT=[[.07,.022,.105],[.36,.24,.46]];
 const SWIRL=(()=>{
   const FS=`precision mediump float;uniform vec2 R;uniform float T;uniform vec3 A;uniform vec3 B;
@@ -1263,8 +1362,8 @@ const SWIRL=(()=>{
     last=performance.now();raf=requestAnimationFrame(frame);
   }
   window.addEventListener('resize',()=>{if(still()) items.forEach(it=>it.draw())});
-  make(document.body,true,()=>$('title').hidden);
-  make($('title'),false,()=>!$('title').hidden);
+  /* the swirl is retired while eras supply the background (kept here to bring back) */
+  if(!ERAS){make(document.body,true,()=>$('title').hidden);make($('title'),false,()=>!$('title').hidden)}
   sync();
   return {sync,boost(){boost=1.2},redraw(){items.forEach(it=>it.draw())}};
 })();
@@ -1916,7 +2015,7 @@ function runProgress(){
 function runCube(){
   const keep={run:G.run,tray:G.tray,spent:G.spent,earned:G.earned},sig=rackSig;
   newLevel(1,G.coins,'endless');
-  Object.assign(G,keep,{done:false});rackSig=sig;
+  Object.assign(G,keep,{done:false});rackSig=sig;G.run.cubes=(G.run.cubes||1)+1;
 }
 /* nothing left to spell: trade one of the round's words for a fresh cube */
 function runSkipCube(){
@@ -2836,7 +2935,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261128-170804';
+const BUILD='20261128-172451';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
@@ -3140,6 +3239,7 @@ function start(data){
   if(resume==='endless'&&savedE&&savedE.state) endless();
   else if(resume&&saved&&saved.state) continueGame();
 }
+applyEra(true);
 start({});
 /* offline support and "add to home screen" when served over http(s) */
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(()=>{});
