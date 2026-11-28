@@ -1022,6 +1022,8 @@ const JX=(()=>{
   let gpk='',gp=null;
   function gpal(){const k=document.documentElement.className;if(k!==gpk||!gp){const cs=getComputedStyle(document.documentElement),v=n=>cs.getPropertyValue(n).trim();
     gp={c:['--st-y','--st-o','--st-r','--st-b','--st-g'].map(v),ink:v('--plastic')||'#050505'};gpk=k}return gp}
+  const gcol=(i,a)=>{const h=gpal().c[i].replace('#','');const n=h.length===3?h.split('').map(c=>c+c).join(''):h;
+    return `rgba(${parseInt(n.slice(0,2),16)},${parseInt(n.slice(2,4),16)},${parseInt(n.slice(4,6),16)},${a.toFixed(3)})`};
   function drawSticker(ctx,j,text,size,layers){
     const g=gpal(),col=g.c[((j.ci%5)+5)%5];ctx.font=C.font.replace('SIZE',size);ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';ctx.lineWidth=size*.3;
     ctx.strokeStyle=ctx.fillStyle=g.ink;
@@ -1058,14 +1060,14 @@ const JX=(()=>{
       const x=t.j.xf(),a=Math.max(Math.min(1,t.j.motion*1.4),t.j.highlight);
       el.style.transform=`translate(${x.x.toFixed(2)}px,${x.y.toFixed(2)}px) rotate(${x.r.toFixed(3)}rad) scale(${x.s.toFixed(3)})`;
       if(a>.02){const s=t.j.shXf(0,t.off),dx=(s.x-x.x).toFixed(1),dy=(s.y-x.y).toFixed(1);
-        el.style.textShadow=`${dx}px ${dy}px 0 ${rgba(st+5+t.ci,a)}`;
-        if(t.box) el.style.boxShadow=`${dx}px ${dy}px 0 ${rgba(st+5+t.ci,a)}`}
+        /* the trailing shadow is one of the cube's face colours (never yellow, which the word and coins use) */
+        const sc=gcol(1+((t.ci%4)+4)%4,a);
+        el.style.textShadow=`${dx}px ${dy}px 0 ${sc}`;
+        if(t.box) el.style.boxShadow=`${dx}px ${dy}px 0 ${sc}`}
       else{el.style.textShadow='';if(t.box)el.style.boxShadow=''}
       if(t.j.settled&&!t.j.highlight){el.style.transform='';texts.delete(el)}
     });
-    /* scored word: every letter cycles the palette in step */
-    const pw=$('preview');if(pw.classList.contains('ok')) pw.querySelectorAll('.l').forEach((l,i)=>{l.style.color=pal(st+i+2);l.style.webkitTextStrokeColor=pal(st+i)});
-    const busyNow=pops.length||rings.length||trauma>0||texts.size||ca>.02||!cube.settled||dragging||pw.classList.contains('ok');
+    const busyNow=pops.length||rings.length||trauma>0||texts.size||ca>.02||!cube.settled||dragging;
     if(busyNow){requestAnimationFrame(loop);dirty=true}
     else{running=false;if(dirty){fc.setTransform(1,0,0,1,0,0);fc.clearRect(0,0,front.width,front.height);bc.setTransform(1,0,0,1,0,0);bc.clearRect(0,0,back.width,back.height);dirty=false}}
   }
@@ -2814,7 +2816,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261128-012412';
+const BUILD='20261128-012616';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
