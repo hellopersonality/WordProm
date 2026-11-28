@@ -1678,12 +1678,22 @@ function accept(word,used){
   SFX.word(word.length,nf);HAP.word(word.length);glowDrift(word.length);if(nNew) setTimeout(()=>{SFX.face();HAP.face()},reduce?0:260);
   ripple(word.length);
   JX.shake(Math.min(.32,.06+(word.length-3)*.06));
+  /* word reactions (length banner, then a callout) spring out of the last letter traced. The coin amount
+     pops at the word's middle, so they stack away from it: upward if the last letter sits above the middle. */
   {const hype=nNew?'FACE CLEAR!':word.length>=9?'LEGENDARY!':word.length>=8?'INCREDIBLE!':word.length>=7?'SUPERB!':word.length>=6?'GREAT!':'';
-   if(hype)setTimeout(()=>JX.banner(hype,{top:true,size:nNew||word.length>=8?62:52,shake:nNew?.4:.25,life:1}),reduce?0:120);
    const cl=callout(word,used,nf,run,before);
-   if(cl){const cx=pts.reduce((a,q)=>a+q[0],0)/pts.length,cy=pts.reduce((a,q)=>a+q[1],0)/pts.length;
-     const sz=Math.min(cl.big?38:32,innerWidth/(cl.big?10:12)),hw=cl.t.length*sz*.36+12,x=Math.max(hw,Math.min(innerWidth-hw,cx));
-     setTimeout(()=>{JX.pop(cl.t,x,cy+sz*1.4,{size:sz,layers:2,kick:cl.big?8:6,life:.95,rise:26});if(cl.big)JX.shake(.12)},reduce?0:hype?420:160)}}
+   if(pts.length&&(hype||cl)){
+     const [lx,ly0]=pts[pts.length-1],mx=pts.reduce((a,q)=>a+q[0],0)/pts.length,my=pts.reduce((a,q)=>a+q[1],0)/pts.length;
+     const dir=ly0<my-4?-1:1,gap=S*.9,ly=Math.abs(ly0-my)<gap?my+dir*gap:ly0;
+     const clampX=(t,sz)=>{const hw=t.length*sz*.36+12;return Math.max(hw,Math.min(innerWidth-hw,lx))};
+     const clampY=y=>Math.max(70,Math.min(innerHeight-190,y));
+     let y=ly,at=reduce?0:120;
+     if(hype){const sz=Math.min(nNew||word.length>=8?50:44,innerWidth/(hype.length*.62));
+       const hy=clampY(y);setTimeout(()=>{JX.pop(hype,clampX(hype,sz),hy,{size:sz,layers:3,kick:9,life:1,shove:300,rise:18});JX.shake(nNew?.4:.25)},at);
+       y+=dir*sz*1.15;at=reduce?0:420}
+     if(cl){const sz=Math.min(cl.big?38:32,innerWidth/(cl.big?10:12)),cy=clampY(y);
+       setTimeout(()=>{JX.pop(cl.t,clampX(cl.t,sz),cy,{size:sz,layers:2,kick:cl.big?8:6,life:.95,rise:18});if(cl.big)JX.shake(.12)},at)}
+   }}
   if(!reduce){stage.style.setProperty('--k',Math.min(4,word.length-2));stage.classList.remove('thump');void stage.offsetWidth;stage.classList.add('thump');setTimeout(()=>stage.classList.remove('thump'),340)}
   if(run) runJuice(ev,pts,broke); else spawnCoins(pts,c+fb);
   busy=true;
@@ -2798,7 +2808,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261128-011227';
+const BUILD='20261128-011511';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
