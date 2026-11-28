@@ -553,20 +553,26 @@ html.era.era-6{color-scheme:dark}
 /* background */
 html.era .swirl,html.era .drift{display:none!important}
 html.era .bg{overflow:hidden}
-.bg[data-era]::before{content:'';position:absolute;inset:-120px;animation:eraScroll var(--pd,3s) linear infinite;will-change:transform}
-@keyframes eraScroll{to{transform:translate(var(--pt),var(--pt))}}
+.bg[data-era]::before{content:'';position:absolute;inset:-120px;will-change:transform}
 .bg[data-era="1"]{background-color:#DCD8CF}
-.bg[data-era="1"]::before{--pt:26px;--pd:2.6s;background-image:linear-gradient(rgba(10,10,10,.08) 1.5px,transparent 1.5px),linear-gradient(90deg,rgba(10,10,10,.08) 1.5px,transparent 1.5px);background-size:26px 26px}
+.bg[data-era="1"]::before{animation:era1Scroll 1.4s linear infinite;background-image:linear-gradient(rgba(10,10,10,.08) 1.5px,transparent 1.5px),linear-gradient(90deg,rgba(10,10,10,.08) 1.5px,transparent 1.5px);background-size:26px 26px}
 .bg[data-era="2"]{background-color:#D92E86}
-.bg[data-era="2"]::before{--pt:18px;--pd:2.2s;background-image:radial-gradient(circle,rgba(10,10,10,.28) 2.2px,transparent 2.7px);background-size:18px 18px}
+.bg[data-era="2"]::before{animation:era2Scroll 1.1s linear infinite;background-image:radial-gradient(circle,rgba(10,10,10,.28) 2.2px,transparent 2.7px);background-size:18px 18px}
 .bg[data-era="3"]{background-color:#00A057}
-.bg[data-era="3"]::before{--pt:30px;--pd:2.4s;background-image:linear-gradient(45deg,rgba(10,10,10,.13) 25%,transparent 25% 50%,rgba(10,10,10,.13) 50% 75%,transparent 75%);background-size:30px 30px}
+.bg[data-era="3"]::before{animation:era3Scroll 1.5s linear infinite;background-image:linear-gradient(45deg,rgba(10,10,10,.13) 25%,transparent 25% 50%,rgba(10,10,10,.13) 50% 75%,transparent 75%);background-size:30px 30px}
 .bg[data-era="4"]{background-color:#2453D6}
-.bg[data-era="4"]::before{--pt:28px;--pd:3.2s;background-image:radial-gradient(circle,rgba(10,10,10,.22) 5px,transparent 5.6px),radial-gradient(circle,rgba(10,10,10,.22) 5px,transparent 5.6px);background-size:28px 28px;background-position:0 0,14px 14px}
+.bg[data-era="4"]::before{animation:era4Scroll 1.6s linear infinite;background-image:radial-gradient(circle,rgba(10,10,10,.22) 5px,transparent 5.6px),radial-gradient(circle,rgba(10,10,10,.22) 5px,transparent 5.6px);background-size:28px 28px;background-position:0 0,14px 14px}
 .bg[data-era="5"]{background-color:#A3CC1F}
-.bg[data-era="5"]::before{--pt:24px;--pd:2s;background-image:linear-gradient(135deg,rgba(10,10,10,.1) 25%,transparent 25%),linear-gradient(225deg,rgba(10,10,10,.1) 25%,transparent 25%),linear-gradient(315deg,rgba(10,10,10,.1) 25%,transparent 25%),linear-gradient(45deg,rgba(10,10,10,.1) 25%,transparent 25%);background-size:24px 24px;background-position:-12px 0,-12px 0,0 0,0 0}
+.bg[data-era="5"]::before{animation:era5Scroll 1.2s linear infinite;background-image:linear-gradient(135deg,rgba(10,10,10,.1) 25%,transparent 25%),linear-gradient(225deg,rgba(10,10,10,.1) 25%,transparent 25%),linear-gradient(315deg,rgba(10,10,10,.1) 25%,transparent 25%),linear-gradient(45deg,rgba(10,10,10,.1) 25%,transparent 25%);background-size:24px 24px;background-position:-12px 0,-12px 0,0 0,0 0}
 .bg[data-era="6"]{background-color:#151515}
-.bg[data-era="6"]::before{--pt:44px;--pd:4.4s;background-image:conic-gradient(rgba(255,255,255,.06) 25%,transparent 0 50%,rgba(255,255,255,.06) 0 75%,transparent 0);background-size:44px 44px}
+.bg[data-era="6"]::before{animation:era6Scroll 2.4s linear infinite;background-image:conic-gradient(rgba(255,255,255,.06) 25%,transparent 0 50%,rgba(255,255,255,.06) 0 75%,transparent 0);background-size:44px 44px}
+/* one loop per era, each moving exactly one pattern tile (fixed values: Safari can skip var() in keyframes) */
+@keyframes era1Scroll{from{transform:translate3d(0,0,0)}to{transform:translate3d(26px,26px,0)}}
+@keyframes era2Scroll{from{transform:translate3d(0,0,0)}to{transform:translate3d(18px,18px,0)}}
+@keyframes era3Scroll{from{transform:translate3d(0,0,0)}to{transform:translate3d(30px,30px,0)}}
+@keyframes era4Scroll{from{transform:translate3d(0,0,0)}to{transform:translate3d(28px,28px,0)}}
+@keyframes era5Scroll{from{transform:translate3d(0,0,0)}to{transform:translate3d(24px,24px,0)}}
+@keyframes era6Scroll{from{transform:translate3d(0,0,0)}to{transform:translate3d(44px,44px,0)}}
 html.calm .bg[data-era]::before{animation:none}
 /* changing era: the old background is laid over the new one and wiped away */
 .bg.bg-old{z-index:-1;animation:eraWipe .7s cubic-bezier(.6,0,.3,1) forwards}
@@ -2936,7 +2942,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261128-173555';
+const BUILD='20261128-174246';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
