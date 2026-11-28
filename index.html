@@ -1017,12 +1017,18 @@ const JX=(()=>{
   function kick(){if(!running){running=true;last=performance.now();requestAnimationFrame(loop)}}
   /* a HUD number or label: hop, punch and a colour shadow that trails it */
   function textJ(el){let t=texts.get(el);if(!t){t={el,j:new J(0,0,{k:520,z:.3,sk:480,sz:.28}),off:3,ci:Math.floor(Math.random()*8)};el.classList.add('jt');texts.set(el,t)}return t}
+  /* sticker pop-ups wear the cube's own colours: one flat face colour each (no cycling), an ink outline and
+     an ink extrusion like the cube's plastic. Read from the theme, so night mode gets its palette. */
+  let gpk='',gp=null;
+  function gpal(){const k=document.documentElement.className;if(k!==gpk||!gp){const cs=getComputedStyle(document.documentElement),v=n=>cs.getPropertyValue(n).trim();
+    gp={c:['--st-y','--st-o','--st-r','--st-b','--st-g'].map(v),ink:v('--plastic')||'#050505'};gpk=k}return gp}
   function drawSticker(ctx,j,text,size,layers){
-    const st=step()+j.ci;ctx.font=C.font.replace('SIZE',size);ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';ctx.lineWidth=size*.36;
-    for(let L=Math.min(layers,3)-1;L>=0;L--){const t=j.shXf(L,C.offset*size/44);
-      ctx.save();ctx.translate(t.x,t.y);ctx.rotate(t.r);ctx.scale(t.s,t.s);ctx.strokeStyle=ctx.fillStyle=pal(st+5+L*2);ctx.strokeText(text,0,0);ctx.fillText(text,0,0);ctx.restore()}
+    const g=gpal(),col=g.c[((j.ci%5)+5)%5];ctx.font=C.font.replace('SIZE',size);ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';ctx.lineWidth=size*.3;
+    ctx.strokeStyle=ctx.fillStyle=g.ink;
+    for(let L=Math.min(layers,3)-1;L>=0;L--){const t=j.shXf(L,C.offset*size/44*.6);
+      ctx.save();ctx.translate(t.x,t.y);ctx.rotate(t.r);ctx.scale(t.s,t.s);ctx.strokeText(text,0,0);ctx.fillText(text,0,0);ctx.restore()}
     const t=j.xf();ctx.save();ctx.translate(t.x,t.y);ctx.rotate(t.r);ctx.scale(t.s,t.s);
-    ctx.strokeStyle=pal(st);ctx.strokeText(text,0,0);ctx.fillStyle=pal(st+2);ctx.fillText(text,0,0);ctx.restore();
+    ctx.strokeStyle=g.ink;ctx.strokeText(text,0,0);ctx.fillStyle=col;ctx.fillText(text,0,0);ctx.restore();
   }
   function hexPath(ctx,cx,cy,R){ctx.beginPath();for(let i=0;i<6;i++){const a=Math.PI/2+i*Math.PI/3,x=cx+Math.cos(a)*R,y=cy+Math.sin(a)*R;i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.closePath()}
   function loop(now){
@@ -1067,7 +1073,7 @@ const JX=(()=>{
     pal,
     /* a sticker word or number that springs in, holds, and scales out */
     pop(text,x,y,o={}){if(off()) return;
-      const j=new J(x,y+10,{from:0,sk:o.k??380,ci:o.ci??Math.floor(Math.random()*8)});j.moveTo(x,y-(o.rise??14));j.pop();if(o.kick)j.punch(o.kick);if(o.shove)j.shove(o.shove);
+      const j=new J(x,y+10,{from:0,sk:o.k??380,ci:o.ci??1+Math.floor(Math.random()*4)});j.moveTo(x,y-(o.rise??14));j.pop();if(o.kick)j.punch(o.kick);if(o.shove)j.shove(o.shove);
       pops.push({j,text,size:o.size??40,age:0,life:o.life??1,layers:o.layers??1});kick()},
     /* a big moment across the middle of the cube */
     banner(text,o={}){if(off()) return;const r=stage.getBoundingClientRect(),w=Math.min(innerWidth*.92,r.width*1.2);
@@ -1334,7 +1340,7 @@ function spawnCoins(points,amount,max){
   const c=points.reduce((a,p)=>[a[0]+p[0]/points.length,a[1]+p[1]/points.length],[0,0]);
   /* the amount as a sticker that springs up out of the letters; bigger amounts, bigger sticker */
   const big=amount>=60,size=Math.round(30+Math.min(40,10*Math.log2(1+amount/6)));
-  JX.pop('+'+amount,c[0],c[1]-S*.2,{size,layers:big?3:1,kick:big?9:4,life:big?1.25:.95,rise:22});if(big)JX.shake(.3);
+  JX.pop('+'+amount,c[0],c[1]-S*.2,{size,ci:0,layers:big?3:1,kick:big?9:4,life:big?1.25:.95,rise:22});if(big)JX.shake(.3);
 }
 const centerOf=el=>{const r=el.getBoundingClientRect();return [r.left+r.width/2,r.top+r.height/2]};
 
@@ -2808,7 +2814,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261128-011511';
+const BUILD='20261128-012412';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
