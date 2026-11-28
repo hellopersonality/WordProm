@@ -161,6 +161,17 @@ html.calm .cube.grab{animation:none}
 .sticker.sel .tile{transform:scale(.9);box-shadow:0 0 0 calc(var(--s) * .07) var(--paper)}
 .sticker.going .tile{transform:scale(.9)}
 .sticker.pop .tile{transform:scale(1.25) rotate(8deg);opacity:0}
+/* Disney principles on the letters (off with Reduce motion). Picking a letter squashes it and it springs back
+   (squash and stretch). Scoring: each letter crouches first (anticipation), deeper for longer words
+   (exaggeration, --k is the word's weight), then stretches up out of the cube as it bursts. */
+html:not(.calm) .sticker.sel .tile{animation:selpop .28s cubic-bezier(.3,1.5,.5,1)}
+@keyframes selpop{0%{transform:scale(1.14,.8)}40%{transform:scale(.84,1.04)}100%{transform:scale(.9)}}
+html:not(.calm) .sticker.going .tile{transition:transform .12s cubic-bezier(.3,0,.5,1);transform:scale(calc(1.06 + var(--k,1) * .02),calc(.9 - var(--k,1) * .02))}
+html:not(.calm) .sticker.pop .tile{transition:none;animation:popout .3s cubic-bezier(.2,.6,.4,1) forwards}
+@keyframes popout{
+  0%{transform:scale(calc(1.06 + var(--k,1) * .02),calc(.9 - var(--k,1) * .02));opacity:1}
+  30%{transform:translateZ(calc(var(--s) * .18)) scale(.8,calc(1.22 + var(--k,1) * .04));opacity:1}
+  100%{transform:translateZ(calc(var(--s) * .45)) scale(.45,1.5);opacity:0}}
 .tile .ch{display:block;transition:transform .42s cubic-bezier(.3,.1,.2,1)}
 .fresh .tile{animation:fade .18s ease-out}
 @keyframes fade{from{opacity:.5}}
@@ -1332,7 +1343,10 @@ function spawnCoins(points,amount,max){
       if(now<t0){requestAnimationFrame(step);return}
       const e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2, u=1-e;
       const x=u*u*sx+2*u*e*bx+e*e*tx, y=u*u*sy+2*u*e*by+e*e*ty, sc=k<.15?k/.15:1-.4*e;
-      el.style.transform=`translate(${x}px,${y}px) scale(${sc}) rotate(${k*360}deg)`;
+      /* stretch along the direction of travel, more the faster it goes */
+      const vx=x-(el._px??x),vy=y-(el._py??y),dt=Math.max(1,now-(el._pt??now-16)),v=Math.hypot(vx,vy)/dt,str=1+Math.min(.55,v*.32);
+      el._px=x;el._py=y;el._pt=now;
+      el.style.transform=`translate(${x}px,${y}px) rotate(${Math.atan2(vy,vx)}rad) scale(${sc*str},${sc/str})`;
       if(k<1){requestAnimationFrame(step);return}
       el.remove();shown+=share;drawCoins();juice(tile);SFX.coin();JX.hit($('coins'),.55);
       if(Math.random()<.3){const q=tile.getBoundingClientRect();sparkle(q.left+10+Math.random()*(q.width-20),q.top+5+Math.random()*(q.height-10),9+Math.random()*8)}
@@ -1486,7 +1500,7 @@ function ripple(len){
 
 /* ---------- moves ---------- */
 const cubies=sel=>[...cubeEl.children].filter(el=>el._pos&&sel(el._pos));
-function rotEls(els,A,deg,ms){els.forEach(el=>{el.style.transition=ms?`transform ${ms}ms cubic-bezier(.25,.1,.2,1)`:'none';el.style.transform=`rotate${A}(${deg}deg) ${base(el._pos)}`})}
+function rotEls(els,A,deg,ms){els.forEach(el=>{el.style.transition=ms?`transform ${ms}ms ${reduce?'cubic-bezier(.25,.1,.2,1)':'cubic-bezier(.3,.12,.3,1.14)'}`:'none';el.style.transform=`rotate${A}(${deg}deg) ${base(el._pos)}`})}
 /* rotate stickers in the selected layer(s); letters keep their on-screen tilt, then spin upright */
 function moveStickers(sel,k,s){
   const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
@@ -1706,12 +1720,15 @@ function accept(word,used){
   if(run) runJuice(ev,pts,broke); else spawnCoins(pts,c+fb);
   busy=true;
   /* the letters go one after another in the order they were spelled, each bursting into particles */
-  const step=reduce?0:Math.min(80,520/used.length);
+  /* timing: a short crouch first, then the letters go in the order they were spelled, slow to fast like a
+     lit fuse (the gaps shrink), each bursting into particles */
+  const step=reduce?0:Math.min(80,520/used.length),lead=reduce?0:110,span=(used.length-1)*step,
+    at=i=>lead+(used.length>1?span*Math.pow(i/(used.length-1),.7):0);
   used.forEach((s,i)=>{const el=elById[s.id];if(!el) return;el.classList.add('going');
-    setTimeout(()=>{el.classList.add('pop');letterBurst(el,i)},i*step)});
+    setTimeout(()=>{el.classList.add('pop');letterBurst(el,i)},at(i))});
   paintSel();
   setTimeout(()=>{used.forEach(s=>{s.ch=null;delete s.tp});busy=false;render();faceFx.forEach(flashFace);progress();
-    const t0=lastInput;setTimeout(()=>{if(lastInput===t0)autoTurn()},reduce?0:420)},reduce?0:Math.max((used.length-1)*step+230,run?juiceDur(ev):0));
+    const t0=lastInput;setTimeout(()=>{if(lastInput===t0)autoTurn()},reduce?0:420)},reduce?0:Math.max(lead+span+300,run?juiceDur(ev):0));
 }
 /* ---------- callouts ----------
    A short sticker word that pops where the word was traced, Odds Engine style, for the moments worth
@@ -1757,9 +1774,12 @@ function letterBurst(el,i){
     p.className='lp';p.style.cssText=`width:${sz}px;height:${sz}px;background:${white?'#fff':col};box-shadow:0 0 ${white?'8px 3px rgba(255,255,255,.9)':'5px 1px '+col}`;
     const ang=(k/n)*Math.PI*2+Math.random()*.8,d=S*(.6+Math.random()*.9);
     fx.appendChild(p);
-    p.animate([{transform:`translate(${x}px,${y}px) scale(1)`,opacity:1},
-      {transform:`translate(${x+Math.cos(ang)*d}px,${y+Math.sin(ang)*d+S*.3}px) scale(0)`,opacity:0}],
-      {duration:480+Math.random()*380,easing:'cubic-bezier(.12,.7,.3,1)',fill:'forwards'}).onfinish=()=>p.remove();
+    /* arcs: thrown up and out, slowing at the top, then falling faster under gravity */
+    const hx=x+Math.cos(ang)*d*.65,hy=y+Math.sin(ang)*d*.65-S*(.35+Math.random()*.3);
+    p.animate([{transform:`translate(${x}px,${y}px) scale(1)`,opacity:1,easing:'cubic-bezier(.2,.7,.4,1)'},
+      {transform:`translate(${hx}px,${hy}px) scale(.85)`,opacity:1,offset:.42,easing:'cubic-bezier(.5,0,.8,.6)'},
+      {transform:`translate(${x+Math.cos(ang)*d}px,${y+Math.sin(ang)*d*.6+S*.9}px) scale(0)`,opacity:0}],
+      {duration:600+Math.random()*380,fill:'forwards'}).onfinish=()=>p.remove();
   }
 }
 function flashFace(fk){G.stickers.filter(s=>key(s.n)===fk).forEach((s,i)=>{const el=elById[s.id];if(!el) return;el.style.setProperty('--fi',i);el.classList.add('fclr');setTimeout(()=>el.classList.remove('fclr'),1500)})}
@@ -2816,7 +2836,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261128-012616';
+const BUILD='20261128-170804';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
