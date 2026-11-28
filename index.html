@@ -541,11 +541,11 @@ html.calm .btn.primary::after,html.calm #tContinue::after,html.calm #tNew::after
    seamless and stays on the GPU. Thick ink outlines and hard un-blurred offset shadows throughout. */
 html.era{--ink:#0A0A0A;--era-sh:#0A0A0A;--era-dk:#151515;--era-dk2:#2A2A2A;--era-lt:#F2F2F2;
   --fe:'Archivo Black',var(--f);--fu:'Space Grotesk',var(--f)}
-html.era.era-1{--ground:#F3F1EC;--st-w:#FFFFFF;--st-y:#FFD60A;--st-r:#FF4A1C;--st-o:#FF9A1F;--st-b:#2F6BFF;--st-g:#5CB8FF;--era-sel:#FFD60A;--era-acc:#5CB8FF}
-html.era.era-2{--ground:#FF3EA5;--st-w:#FFFFFF;--st-y:#FFD60A;--st-r:#FF2E2E;--st-o:#FF8A00;--st-b:#3D3DFF;--st-g:#00C2A8;--era-sel:#C6F432;--era-acc:#FFD60A}
-html.era.era-3{--ground:#00C46A;--st-w:#FFFFFF;--st-y:#FFE500;--st-r:#FF3B30;--st-o:#FF2E93;--st-b:#5B2BFF;--st-g:#00B3FF;--era-sel:#FFE500;--era-acc:#FF2E93}
-html.era.era-4{--ground:#2F6BFF;--st-w:#FFFFFF;--st-y:#FFD60A;--st-r:#E63B2E;--st-o:#FF8A00;--st-b:#0A0A0A;--st-g:#00D1C1;--era-sel:#FFFFFF;--era-acc:#FFD60A}
-html.era.era-5{--ground:#C6F432;--st-w:#FFFFFF;--st-y:#FFD60A;--st-r:#FF2E93;--st-o:#FF8A00;--st-b:#151515;--st-g:#7A3CFF;--era-sel:#FFD60A;--era-acc:#FF2E93}
+html.era.era-1{--ground:#DCD8CF;--st-w:#FFFFFF;--st-y:#FFD60A;--st-r:#FF4A1C;--st-o:#FF9A1F;--st-b:#2F6BFF;--st-g:#5CB8FF;--era-sel:#FFD60A;--era-acc:#5CB8FF}
+html.era.era-2{--ground:#D92E86;--st-w:#FFFFFF;--st-y:#FFD60A;--st-r:#FF2E2E;--st-o:#FF8A00;--st-b:#3D3DFF;--st-g:#00C2A8;--era-sel:#C6F432;--era-acc:#FFD60A}
+html.era.era-3{--ground:#00A057;--st-w:#FFFFFF;--st-y:#FFE500;--st-r:#FF3B30;--st-o:#FF2E93;--st-b:#5B2BFF;--st-g:#00B3FF;--era-sel:#FFE500;--era-acc:#FF2E93}
+html.era.era-4{--ground:#2453D6;--st-w:#FFFFFF;--st-y:#FFD60A;--st-r:#E63B2E;--st-o:#FF8A00;--st-b:#0A0A0A;--st-g:#00D1C1;--era-sel:#FFFFFF;--era-acc:#FFD60A}
+html.era.era-5{--ground:#A3CC1F;--st-w:#FFFFFF;--st-y:#FFD60A;--st-r:#FF2E93;--st-o:#FF8A00;--st-b:#151515;--st-g:#7A3CFF;--era-sel:#FFD60A;--era-acc:#FF2E93}
 html.era.era-6{--ground:#151515;--st-w:#F2F2F2;--st-y:#FFD60A;--st-r:#FF4A1C;--st-o:#FF9A1F;--st-b:#2F6BFF;--st-g:#5CB8FF;--era-sel:#C6F432;--era-acc:#FFD60A;--era-sh:#FFD60A}
 html.era{--st-dark:#0A0A0A;--st-light:#FFFFFF;--plastic:#0A0A0A;color-scheme:light}
 html.era.era-6{color-scheme:dark}
@@ -555,15 +555,15 @@ html.era .swirl,html.era .drift{display:none!important}
 html.era .bg{overflow:hidden}
 .bg[data-era]::before{content:'';position:absolute;inset:-120px;animation:eraScroll var(--pd,3s) linear infinite;will-change:transform}
 @keyframes eraScroll{to{transform:translate(var(--pt),var(--pt))}}
-.bg[data-era="1"]{background-color:#F3F1EC}
+.bg[data-era="1"]{background-color:#DCD8CF}
 .bg[data-era="1"]::before{--pt:26px;--pd:2.6s;background-image:linear-gradient(rgba(10,10,10,.08) 1.5px,transparent 1.5px),linear-gradient(90deg,rgba(10,10,10,.08) 1.5px,transparent 1.5px);background-size:26px 26px}
-.bg[data-era="2"]{background-color:#FF3EA5}
+.bg[data-era="2"]{background-color:#D92E86}
 .bg[data-era="2"]::before{--pt:18px;--pd:2.2s;background-image:radial-gradient(circle,rgba(10,10,10,.28) 2.2px,transparent 2.7px);background-size:18px 18px}
-.bg[data-era="3"]{background-color:#00C46A}
+.bg[data-era="3"]{background-color:#00A057}
 .bg[data-era="3"]::before{--pt:30px;--pd:2.4s;background-image:linear-gradient(45deg,rgba(10,10,10,.13) 25%,transparent 25% 50%,rgba(10,10,10,.13) 50% 75%,transparent 75%);background-size:30px 30px}
-.bg[data-era="4"]{background-color:#2F6BFF}
+.bg[data-era="4"]{background-color:#2453D6}
 .bg[data-era="4"]::before{--pt:28px;--pd:3.2s;background-image:radial-gradient(circle,rgba(10,10,10,.22) 5px,transparent 5.6px),radial-gradient(circle,rgba(10,10,10,.22) 5px,transparent 5.6px);background-size:28px 28px;background-position:0 0,14px 14px}
-.bg[data-era="5"]{background-color:#C6F432}
+.bg[data-era="5"]{background-color:#A3CC1F}
 .bg[data-era="5"]::before{--pt:24px;--pd:2s;background-image:linear-gradient(135deg,rgba(10,10,10,.1) 25%,transparent 25%),linear-gradient(225deg,rgba(10,10,10,.1) 25%,transparent 25%),linear-gradient(315deg,rgba(10,10,10,.1) 25%,transparent 25%),linear-gradient(45deg,rgba(10,10,10,.1) 25%,transparent 25%);background-size:24px 24px;background-position:-12px 0,-12px 0,0 0,0 0}
 .bg[data-era="6"]{background-color:#151515}
 .bg[data-era="6"]::before{--pt:44px;--pd:4.4s;background-image:conic-gradient(rgba(255,255,255,.06) 25%,transparent 0 50%,rgba(255,255,255,.06) 0 75%,transparent 0);background-size:44px 44px}
@@ -2936,7 +2936,7 @@ function fingerLoop(){
    BUILD is stamped into the page when it's built, and version.json beside it names the newest build.
    When they differ, a banner offers to update. Updating waits for any move in progress to finish,
    saves the game, refreshes the cached files and reloads straight back into the same game. */
-const BUILD='20261128-172909';
+const BUILD='20261128-173555';
 let updateDismissed=null, latestBuild=null;
 async function checkUpdate(){
   if(location.protocol==='file:'||BUILD.startsWith('__')) return;
